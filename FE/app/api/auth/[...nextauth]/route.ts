@@ -70,7 +70,6 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    // SỬA 2: Thêm kiểu tường minh cho 'signIn' (Lỗi của bạn ở đây)
     async signIn({ user, account, profile, email, credentials }: { 
         user: User, 
         account: Account | null, 
@@ -87,8 +86,6 @@ export const authOptions: NextAuthOptions = {
       }
       return true;
     },
-     
-     // Giữ nguyên phần sửa đúng từ trước
      async jwt({ token, user }: { token: JWT, user: User }) {
       const anyUser = user as any; 
       if (anyUser) {
@@ -100,8 +97,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-    
-    // Giữ nguyên phần sửa đúng từ trước
+
     async session({ session, token }: { session: Session, token: JWT }) {
       const anyToken = token as any; 
       if (anyToken) {
