@@ -30,10 +30,10 @@
   },
   "include": [
     "next-env.d.ts",
+    "typings.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts",
-    "utils/insertDemoData.js"
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

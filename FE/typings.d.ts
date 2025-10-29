@@ -104,11 +104,15 @@ declare module "next-auth" {
       image: string;
       role: string;
     };
+    accessToken?: string;
   }
 
   interface User {
     id: string;
     role: string;
+    accessToken?: string;
+    name?: string;   
+    email?: string;
   }
 }
 
@@ -116,5 +120,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string;
     role: string;
+    accessToken?: string;
+    name?: string;     
+    email?: string;
   }
 }

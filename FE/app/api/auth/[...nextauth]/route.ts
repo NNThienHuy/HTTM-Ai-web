@@ -1,5 +1,6 @@
-import NextAuth from "next-auth";
-import type { NextAuthOptions } from "next-auth"; 
+import NextAuth from "next-auth/next";
+import type { User, Session, Account, Profile, NextAuthOptions } from "next-auth";
+import { JWT } from "next-auth/jwt"; 
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
@@ -7,9 +8,8 @@ import { nanoid } from "nanoid";
 import config from "@/lib/config";
 
 export const authOptions: NextAuthOptions = { 
-  // adapter: PrismaAdapter(prisma), // <- ĐÃ XÓA
   session: {
-    strategy: "jwt", // Sử dụng JWT (JSON Web Tokens)
+    strategy: "jwt",
   },
   providers: [
     GoogleProvider({
@@ -22,19 +22,17 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email", placeholder: "test@example.com" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials, req) {
-        // --- GỌI API ĐĂNG NHẬP CỦA LARAVEL ---
+      async authorize(credentials: any, req) {
         if (!credentials) {
-          return null; // Thiếu thông tin đăng nhập
+          return null;
         }
 
         try {
-          // Gọi API đăng nhập của Laravel
-          const loginResponse = await fetch(`${config.apiBaseUrl}/api/login`, { // Sử dụng apiBaseUrl từ config
+          const loginResponse = await fetch(`${config.apiBaseUrl}/api/login`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Accept': 'application/json', // Laravel thường cần header này
+              'Accept': 'application/json',
             },
             body: JSON.stringify({
               email: credentials.email,
@@ -42,99 +40,89 @@ export const authOptions: NextAuthOptions = {
             }),
           });
 
-          // Kiểm tra nếu login không thành công (vd: sai pass, user không tồn tại)
           if (!loginResponse.ok) {
              console.error("Laravel login failed:", loginResponse.status, await loginResponse.text());
-             // Bạn có thể throw error cụ thể hơn dựa trên status code
-             // Ví dụ: if (loginResponse.status === 401) throw new Error("Invalid credentials");
-             return null; // Trả về null khi đăng nhập thất bại (NextAuth sẽ báo lỗi "Invalid credentials")
+             return null;
           }
 
-          // Lấy dữ liệu trả về từ Laravel (bao gồm user và token)
           const data = await loginResponse.json();
 
-          // Kiểm tra xem có user trong response không
-          if (data && data.user) {
-             // Laravel trả về user object bên trong key 'user'
+          if (data && data.user && data.access_token) {
              const user = data.user;
 
-             // Quan trọng: Trả về object user với các trường NextAuth cần
-             // Đảm bảo các tên trường khớp (id, name, email, role nếu có)
              return {
-               id: user.id.toString(), // Chuyển id sang string nếu cần
+               id: user.id.toString(),
                name: user.name,
                email: user.email,
-               role: user.role ?? "user", // Lấy role từ Laravel, mặc định là 'user' nếu không có
-               // Bạn có thể thêm access_token vào đây nếu muốn nó có trong JWT
-               // accessToken: data.access_token
-             };
+               role: user.role ?? "user",
+               accessToken: data.access_token
+             } as any;
           } else {
-            // Trường hợp response không có user data
-            console.error("Laravel login response missing user data:", data);
+            console.error("Laravel login response missing user or token:", data);
             return null;
           }
 
         } catch (error) {
            console.error("Error calling Laravel login API:", error);
-           return null; // Trả về null nếu có lỗi mạng hoặc lỗi khác
+           return null;
         }
-        // --- KẾT THÚC FETCH ---
-
       },
     }),
   ],
   callbacks: {
-    // Callback signIn cho Google Provider (có thể cần gọi API Laravel để tạo user nếu chưa có)
-    async signIn({ user, account, profile, email, credentials }) {
+    // SỬA 2: Thêm kiểu tường minh cho 'signIn' (Lỗi của bạn ở đây)
+    async signIn({ user, account, profile, email, credentials }: { 
+        user: User, 
+        account: Account | null, 
+        profile?: Profile, 
+        email?: { verificationRequest?: boolean }, 
+        credentials?: Record<string, any> 
+    }) {
       if (account?.provider === "google") {
-        // TÙY CHỌN: Gọi API Laravel để kiểm tra/tạo user từ Google login
-        // Ví dụ: fetch(`${config.apiBaseUrl}/api/auth/google/callback`, { ... body: profile ... })
-        // Nếu API Laravel xử lý thành công thì return true, ngược lại return false hoặc URL lỗi
          const email = profile?.email;
          if (!email) {
             console.error("Google profile missing email");
-            return false; // Hoặc chuyển hướng đến trang lỗi
+            return false;
          }
-         // Tạm thời luôn cho phép đăng nhập Google, bạn cần hoàn thiện logic gọi API BE sau
       }
-      return true; // Cho phép đăng nhập Credentials (đã xử lý ở authorize)
+      return true;
     },
-     // Callback JWT để thêm role và id vào token
-     // File FE/next-auth.d.ts sẽ báo cho TS biết token có thể chứa id và role
-     async jwt({ token, user }) {
-      // Khi đăng nhập thành công (lần đầu), user object sẽ có mặt (từ authorize hoặc signIn)
-      // Chú ý: user object này chỉ tồn tại trong lần gọi đầu tiên sau khi đăng nhập
-      if (user) {
-        token.id = user.id;
-        token.role = user.role; // Lấy role từ User object (đã mở rộng type)
-        // Nếu bạn thêm accessToken vào user object trong authorize:
-        // token.accessToken = (user as any).accessToken;
+     
+     // Giữ nguyên phần sửa đúng từ trước
+     async jwt({ token, user }: { token: JWT, user: User }) {
+      const anyUser = user as any; 
+      if (anyUser) {
+        token.id = anyUser.id;
+        token.role = anyUser.role;
+        token.accessToken = anyUser.accessToken; 
+        token.name = anyUser.name;
+        token.email = anyUser.email;
       }
       return token;
     },
-    // Callback session để thêm role và id vào session object cho client sử dụng
-    // Dữ liệu từ token (ở callback jwt) được truyền vào đây
-    // File FE/next-auth.d.ts sẽ báo cho TS biết session.user có thể chứa id và role
-    async session({ session, token }) {
-      if (token && session.user) {
-        // Gán thêm thông tin từ token vào session.user
-        session.user.id = token.id; // Lấy id từ token
-        session.user.role = token.role; // Lấy role từ token
-        // Nếu bạn thêm accessToken vào token trong jwt callback:
-        // session.accessToken = token.accessToken as string;
+    
+    // Giữ nguyên phần sửa đúng từ trước
+    async session({ session, token }: { session: Session, token: JWT }) {
+      const anyToken = token as any; 
+      if (anyToken) {
+        if (session.user) {
+          session.user.id = anyToken.id;
+          session.user.role = anyToken.role;
+          if (anyToken.name) session.user.name = anyToken.name;
+          if (anyToken.email) session.user.email = anyToken.email;
+        }
+        session.accessToken = anyToken.accessToken; 
       }
       return session;
     },
   },
   pages: {
-    signIn: '/login', // Trang đăng nhập tùy chỉnh của bạn
-    // error: '/auth/error', // (optional) Trang hiển thị lỗi xác thực
+    signIn: '/login',
   },
-  secret: process.env.NEXTAUTH_SECRET, // Đảm bảo bạn đã set biến này trong .env
-  debug: process.env.NODE_ENV === 'development', // Bật debug log khi ở môi trường dev
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 };
 
 const handler = NextAuth(authOptions);
 
 export { handler as GET, handler as POST };
-
