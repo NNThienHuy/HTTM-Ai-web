@@ -12,7 +12,6 @@ const RegisterPage = () => {
   const { data: session, status: sessionStatus } = useSession();
 
   useEffect(() => {
-    // chechking if user has already registered redirect to home page
     if (sessionStatus === "authenticated") {
       router.replace("/");
     }
@@ -48,7 +47,6 @@ const RegisterPage = () => {
     }
 
     try {
-      // sending API request for registering user
       const res = await fetch("/api/register", {
         method: "POST",
         headers: {
@@ -67,9 +65,7 @@ const RegisterPage = () => {
         toast.success("Registration successful");
         router.push("/login");
       } else {
-        // Handle different types of errors
         if (data.details && Array.isArray(data.details)) {
-          // Validation errors
           const errorMessage = data.details.map((err: any) => err.message).join(", ");
           setError(errorMessage);
           toast.error(errorMessage);

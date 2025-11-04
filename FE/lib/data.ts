@@ -1,5 +1,4 @@
 import apiClient from './api';
-// 1. SỬA LỖI: Import `Product` một cách rõ ràng từ file types.ts
 import { Product } from './types';
 
 // ==========================================================
@@ -33,7 +32,6 @@ interface PaginatedResponse<T> {
 //  HÀM "DỊCH" (ADAPTER FUNCTION)
 // ==========================================================
 
-// 2. SỬA LỖI: Hàm này giờ sử dụng `Product` đã được import
 function adaptProduct(laravelProduct: LaravelProduct): Product {
   
   const mainImage = (laravelProduct.images && laravelProduct.images.length > 0)
@@ -67,10 +65,14 @@ function adaptProduct(laravelProduct: LaravelProduct): Product {
 //  HÀM GỌI API MỚI
 // ==========================================================
 
-// 3. SỬA LỖI: Hàm này giờ sử dụng `Product` đã được import
 export async function getProducts(searchParams: { [key: string]: string | string[] | undefined }): Promise<Product[]> {
   try {
-    const response = await apiClient.get('/api/products'); 
+
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+
+    const url = `${baseUrl}/api/products`;
+
+    const response = await apiClient.get(url);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch products: ${response.statusText}`);
