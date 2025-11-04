@@ -6,7 +6,37 @@ import {
   sanitizeInput,
   commonValidations
 } from "@/utils/validation";
-import { handleApiError, AppError } from "@/utils/errorHandler";
+
+
+class AppError extends Error {
+  public statusCode: number;
+  constructor(message: string, statusCode = 500) {
+    super(message);
+    this.name = "AppError";
+    this.statusCode = statusCode;
+  }
+}
+
+const handleApiError = (error: unknown) => {
+  if (error instanceof AppError) {
+    return new NextResponse(
+      JSON.stringify({ error: error.message }),
+      { status: error.statusCode, headers: { "Content-Type": "application/json" } }
+    );
+  } else if (error instanceof Error) {
+    console.error(error);
+    return new NextResponse(
+      JSON.stringify({ error: "Internal Server Error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  } else {
+    console.error(error);
+    return new NextResponse(
+      JSON.stringify({ error: "Unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+};
 
 export const POST = async (request: Request) => {
   try {
