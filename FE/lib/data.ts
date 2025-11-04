@@ -1,4 +1,3 @@
-import apiClient from './api';
 import { Product } from './types';
 
 // ==========================================================
@@ -67,12 +66,16 @@ function adaptProduct(laravelProduct: LaravelProduct): Product {
 
 export async function getProducts(searchParams: { [key: string]: string | string[] | undefined }): Promise<Product[]> {
   try {
-
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
-    const url = `${baseUrl}/api/products`;
+    // Xử lý searchParams 
+     const query = new URLSearchParams(searchParams as Record<string, string>).toString();
 
-    const response = await apiClient.get(url);
+
+    const url = `${baseUrl}/api/products`; 
+    // Nếu dùng query: const url = `${baseUrl}/api/products?${query}`;
+
+    const response = await fetch(url, { cache: 'no-store' }); 
 
     if (!response.ok) {
       throw new Error(`Failed to fetch products: ${response.statusText}`);
