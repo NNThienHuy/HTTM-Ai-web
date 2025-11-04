@@ -5,7 +5,6 @@ export default async function Layout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // This function handles all authentication and authorization server-side
   await requireAdmin();
 
   return <>{children}</>;
