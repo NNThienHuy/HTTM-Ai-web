@@ -1,27 +1,51 @@
 import React from "react";
 import ProductItem from "./ProductItem";
 import Heading from "./Heading";
-import apiClient from "@/lib/api";
+// import apiClient from "@/lib/api"; // <-- KHÔNG DÙNG NỮA VÌ ĐÂY LÀ SERVER COMPONENT
+
+/**
+ * Hàm này lấy dữ liệu trên server.
+ * Chúng ta dùng 'fetch' trực tiếp thay vì 'apiClient' vì 'apiClient'
+ * sử dụng 'getSession' (client-side) không tương thích với Server Component.
+ */
+const fetchProducts = async () => {
+  // Lấy URL của API từ biến môi trường
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || "";
+  const endpoint = `${baseUrl}/api/products`;
+
+  try {
+    // *** SỬA LỖI Ở ĐÂY: Dùng fetch API tiêu chuẩn ***
+    const data = await fetch(endpoint, {
+      cache: "no-store", // Đảm bảo dữ liệu luôn mới (giống useEffect)
+    });
+
+    if (!data.ok) {
+      console.error("Failed to fetch products:", data.statusText);
+      return []; // Trả về mảng rỗng nếu lỗi
+    }
+
+    const result = await data.json();
+
+    // API backend trả về cấu trúc { data: [...] }
+    if (result && Array.isArray(result.data)) {
+      return result.data; // Trả về mảng sản phẩm
+    }
+
+    // Dự phòng nếu API trả về mảng trực tiếp
+    if (Array.isArray(result)) {
+      return result;
+    }
+
+    return []; // Trả về rỗng nếu cấu trúc không như mong đợi
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    return []; // Trả về mảng rỗng nếu có ngoại lệ
+  }
+};
 
 const ProductsSection = async () => {
-  let products = [];
-  
-  try {
-    // sending API request for getting all products
-    const data = await apiClient.get("/api/products");
-    
-    if (!data.ok) {
-      console.error('Failed to fetch products:', data.statusText);
-      products = [];
-    } else {
-      const result = await data.json();
-      // Ensure products is an array
-      products = Array.isArray(result) ? result : [];
-    }
-  } catch (error) {
-    console.error('Error fetching products:', error);
-    products = [];
-  }
+  // Gọi hàm fetch data (hàm này giờ đã an toàn để chạy trên server)
+  const products = await fetchProducts();
 
   return (
     <div className="bg-blue-500 border-t-4 border-white">

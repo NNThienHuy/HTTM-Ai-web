@@ -89,7 +89,6 @@ const DashboardSingleUserPage = ({
   };
 
   useEffect(() => {
-    // sending API request for a single user
     apiClient.get(`/api/users/${id}`)
       .then((res) => {
         return res.json();

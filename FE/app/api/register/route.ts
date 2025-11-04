@@ -1,18 +1,19 @@
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
-import { registrationSchema } from "@/utils/schema";
-import { sanitizeInput, commonValidations } from "@/utils/validation";
+import {
+  registrationSchema,
+  sanitizeInput,
+  commonValidations
+} from "@/utils/validation";
 import { handleApiError, AppError } from "@/utils/errorHandler";
 
 export const POST = async (request: Request) => {
   try {
-    // Get client IP for rate limiting
     const clientIP = request.headers.get("x-forwarded-for") || 
                     request.headers.get("x-real-ip") || 
                     "unknown";
 
-    // Check rate limit
     if (!commonValidations.checkRateLimit(clientIP, 5, 15 * 60 * 1000)) {
       throw new AppError("Too many registration attempts. Please try again later.", 429);
     }
@@ -37,7 +38,6 @@ export const POST = async (request: Request) => {
 
     const hashedPassword = await bcrypt.hash(password, 14);
 
-    // Create user with proper error handling
     const newUser = await prisma.user.create({
       data: {
         id: nanoid(),
@@ -47,7 +47,6 @@ export const POST = async (request: Request) => {
       },
     });
 
-    // Return success response without sensitive data
     return new NextResponse(
       JSON.stringify({ 
         message: "User registered successfully",
