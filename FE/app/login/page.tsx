@@ -45,20 +45,23 @@ const LoginPage = () => {
     }
 
     const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+    redirect: false,
+    email,
+    password,
+    remember: e.target[2].checked,
+  });
 
-    if (res?.error) {
-      setError("Invalid email or password");
-      toast.error("Invalid email or password");
-      if (res?.url) router.replace("/");
-    } else {
-      setError("");
-      toast.success("Successful login");
-    }
-  };
+  if (res?.error) {
+    setError("Invalid email or password");
+    toast.error("Invalid email or password");
+    return; // ❗ KHÔNG điều hướng khi lỗi
+  }
+
+  // ✅ Thành công
+  setError("");
+  toast.success("Successful login");
+  router.replace("/"); 
+};
 
   if (sessionStatus === "loading") {
     return <h1>Loading...</h1>;

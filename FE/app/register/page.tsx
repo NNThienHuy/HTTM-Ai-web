@@ -22,68 +22,68 @@ const RegisterPage = () => {
     return emailRegex.test(email);
   };
   
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    const email = e.target[2].value;
-    const password = e.target[3].value;
-    const confirmPassword = e.target[4].value;
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
 
-    if (!isValidEmail(email)) {
-      setError("Email is invalid");
-      toast.error("Email is invalid");
-      return;
-    }
+  const form = new FormData(e.currentTarget);
+  const ho = String(form.get("name") || "").trim();        // input "Họ"
+  const ten = String(form.get("lastname") || "").trim();    // input "Tên"
+  const email = String(form.get("email") || "").trim();
+  const password = String(form.get("password") || "");
+  const confirmPassword = String(form.get("confirmpassword") || "");
+  const accepted = (e.currentTarget as any)["remember-me"]?.checked === true;
 
-    if (!password || password.length < 8) {
-      setError("Password is invalid");
-      toast.error("Password is invalid");
-      return;
-    }
+  // --- FE ---
+  if (!isValidEmail(email)) return toast.error("Email is invalid");
+  if (!password || password.length < 8) return toast.error("Password is invalid");
+  if (confirmPassword !== password) return toast.error("Passwords are not equal");
+  if (!accepted) return toast.error("Bạn phải chấp nhận điều khoản");
 
-    if (confirmPassword !== password) {
-      setError("Passwords are not equal");
-      toast.error("Passwords are not equal");
-      return;
-    }
+  // --- Laravel ---
+  const payload = {
+    name: `${ho} ${ten}`.trim(),
+    email,
+    password,
+    password_confirmation: confirmPassword, 
+    terms: accepted,                        
+  };
 
     try {
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
+    const res = await fetch("/api/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      const data = await res.json();
+    const data = await res.json();
 
-      if (res.ok) {
-        setError("");
-        toast.success("Registration successful");
-        router.push("/login");
-      } else {
-        if (data.details && Array.isArray(data.details)) {
-          const errorMessage = data.details.map((err: any) => err.message).join(", ");
-          setError(errorMessage);
-          toast.error(errorMessage);
-        } else if (data.error) {
-          // General errors
-          setError(data.error);
-          toast.error(data.error);
-        } else {
-          setError("Registration failed");
-          toast.error("Registration failed");
-        }
-      }
-    } catch (error) {
-      toast.error("Error, try again");
-      setError("Error, try again");
-      console.log(error);
+    if (res.ok) {
+      setError("");
+      toast.success("Registration successful");
+      router.push("/login");
+      return;
     }
-  };
+
+    if (data?.errors && typeof data.errors === "object") {
+      const msg = Object.entries(data.errors)
+        .map(([k, v]: any) => `${k}: ${Array.isArray(v) ? v.join(", ") : String(v)}`)
+        .join("\n");
+      setError(msg);
+      toast.error("Registration failed");
+    } else if (data?.details && Array.isArray(data.details)) {
+      const msg = data.details.map((d: any) => d.message).join(", ");
+      setError(msg);
+      toast.error(msg);
+    } else {
+      setError(data?.error || "Registration failed");
+      toast.error(data?.error || "Registration failed");
+    }
+  } catch (err) {
+    setError("Error, try again");
+    toast.error("Error, try again");
+    console.error(err);
+  }
+};
 
   if (sessionStatus === "loading") {
     return <h1>Loading...</h1>;
