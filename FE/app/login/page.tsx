@@ -14,14 +14,11 @@ const LoginPage = () => {
   const { data: session, status: sessionStatus } = useSession();
 
   useEffect(() => {
-    // Check if session expired
     const expired = searchParams.get('expired');
     if (expired === 'true') {
       setError("Your session has expired. Please log in again.");
       toast.error("Your session has expired. Please log in again.");
     }
-    
-    // if user has already logged in redirect to home page
     if (sessionStatus === "authenticated") {
       router.replace("/");
     }
