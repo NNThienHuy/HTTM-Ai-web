@@ -1,7 +1,7 @@
-import { NextAuthOptions, User } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-
-const LARAVEL_API_LOGIN_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`;
+import { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials"; 
+import config from "@/lib/config";
 
 interface LaravelUser {
   id: number;
@@ -12,33 +12,36 @@ interface LaravelUser {
 
 interface LaravelLoginResponse {
   user: LaravelUser;
-  token: string;
+  access_token: string; 
   message?: string;
 }
 
-export const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = { 
   session: {
     strategy: "jwt",
   },
   providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
     CredentialsProvider({
       name: "Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email", type: "email", placeholder: "test@example.com" },
         password: { label: "Password", type: "password" },
       },
-      
-      async authorize(credentials, req) {
-        if (!credentials?.email || !credentials?.password) {
-          throw new Error("Vui lòng nhập email và mật khẩu");
+      async authorize(credentials: any, req) {
+        if (!credentials) {
+          return null;
         }
 
         try {
-          const res = await fetch(LARAVEL_API_LOGIN_URL, {
-            method: "POST",
+          const loginResponse = await fetch(`${config.apiBaseUrl}/api/auth/login`, {
+            method: 'POST',
             headers: {
-              "Content-Type": "application/json",
-              "Accept": "application/json",
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
             },
             body: JSON.stringify({
               email: credentials.email,
@@ -46,26 +49,30 @@ export const authOptions: NextAuthOptions = {
             }),
           });
 
-          const responseData: LaravelLoginResponse = await res.json();
+          const data = await loginResponse.json();
 
-          if (!res.ok) {
-            throw new Error(responseData.message || "Email hoặc mật khẩu không đúng");
+          if (!loginResponse.ok) {
+            console.error("Laravel login failed:", loginResponse.status, data.message);
+
+            throw new Error(data.message || "Email hoặc mật khẩu không đúng");
           }
-          
-          if (responseData.user && responseData.token) {
+
+          if (data && data.user && data.access_token) {
+            const user = data.user;
             return {
-              id: responseData.user.id.toString(),
-              name: responseData.user.name,
-              email: responseData.user.email,
-              role: responseData.user.role,
-              accessToken: responseData.token,
-            } as User; 
+              id: user.id.toString(),
+              name: user.name,
+              email: user.email,
+              role: user.role ?? "user",
+              accessToken: data.access_token
+            };
           } else {
+            console.error("Laravel login response missing user or token:", data);
             return null;
           }
 
         } catch (error: any) {
-          console.error("Login Error:", error);
+          console.error("Error calling Laravel login API:", error);
           throw new Error(error.message || "Đăng nhập thất bại");
         }
       },
@@ -73,28 +80,43 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
+    async signIn({ account, profile }) {
+      if (account?.provider === "google") {
+        const email = profile?.email;
+        if (!email) {
+          console.error("Google profile missing email");
+          return false;
+        }
+      }
+      return true;
+    },
+
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.accessToken = user.accessToken;
+        token.name = user.name;
+        token.email = user.email;
       }
       return token;
     },
-
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.accessToken = token.accessToken;
+        if (session.user) {
+          session.user.id = token.id;
+          session.user.role = token.role;
+          if (token.name) session.user.name = token.name;
+          if (token.email) session.user.email = token.email;
+        }
+        session.accessToken = token.accessToken;
       }
       return session;
     },
   },
-
   pages: {
-    signIn: "/login",
+    signIn: '/login',
   },
-
-  debug: process.env.NODE_ENV === "development",
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 };
