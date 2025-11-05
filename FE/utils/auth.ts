@@ -2,8 +2,7 @@ import { NextAuthOptions, User } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-const LARAVEL_API_LOGIN_URL = process.env.LARAVEL_API_URL 
-                           || "http://localhost:8000/api/auth/login";
+const LARAVEL_API_LOGIN_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`;
 
 interface LaravelUser {
   id: number;
@@ -15,11 +14,31 @@ interface LaravelUser {
 interface LaravelLoginResponse {
   user: LaravelUser;
   token: string;
+  message?: string; 
+}
+
+declare module "next-auth" {
+  interface User {
+    id: string;
+    role?: string;
+    accessToken?: string;
+  }
+  interface Session {
+    user: User;
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role?: string;
+    accessToken?: string;
+  }
 }
 
 export const authOptions: NextAuthOptions = {
   session: {
-    strategy: "jwt", 
+    strategy: "jwt",
   },
   providers: [
     CredentialsProvider({
@@ -27,13 +46,15 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
-      },     
+      },
+      
       async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Vui lòng nhập email và mật khẩu");
         }
 
         try {
+          // Gọi API login của Laravel BE
           const res = await fetch(LARAVEL_API_LOGIN_URL, {
             method: "POST",
             headers: {
@@ -51,13 +72,14 @@ export const authOptions: NextAuthOptions = {
           if (!res.ok) {
             throw new Error(responseData.message || "Email hoặc mật khẩu không đúng");
           }
+          
           if (responseData.user && responseData.token) {
             return {
-              id: responseData.user.id.toString(), 
+              id: responseData.user.id.toString(),
               name: responseData.user.name,
               email: responseData.user.email,
               role: responseData.user.role,
-              accessToken: responseData.token, 
+              accessToken: responseData.token,
             };
           } else {
             return null;
@@ -72,34 +94,27 @@ export const authOptions: NextAuthOptions = {
   ],
 
   callbacks: {
-    /**
-     * Callback này được gọi khi một JWT được tạo (lúc đăng nhập)
-     * hoặc được cập nhật.
-     */
-    async jwt({ token, user, trigger, session }) {
-
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
         token.role = user.role;
-        token.accessToken = user.accessToken; 
+        token.accessToken = user.accessToken;
       }
       return token;
     },
 
-    /**
-     * Callback này được gọi khi một session được check (
-     */
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id;
         session.user.role = token.role;
-        session.user.accessToken = token.accessToken; 
+        session.user.accessToken = token.accessToken;
       }
       return session;
     },
   },
+
   pages: {
-    signIn: "/login", 
+    signIn: "/login",
   },
 
   debug: process.env.NODE_ENV === "development",

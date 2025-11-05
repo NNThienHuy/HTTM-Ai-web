@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import {
   registrationSchema,
   sanitizeInput
-} from "@/utils/validation"; 
-import { handleApiError, AppError } from "@/utils/errorHandler"; 
+} from "@/utils/validation";
+import { handleApiError, AppError } from "@/utils/errorHandler";
 
-const LARAVEL_API_URL = process.env.LARAVEL_API_URL || "http://localhost:8000/api/auth/register";
+const LARAVEL_API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/register`;
 
 export const POST = async (request: Request) => {
   try {
@@ -35,9 +35,7 @@ export const POST = async (request: Request) => {
 
     const data = await laravelResponse.json();
 
-
     if (!laravelResponse.ok) {
-
       const errorMessage = data.message || "Lỗi đăng ký từ backend";
       throw new AppError(errorMessage, laravelResponse.status);
     }
@@ -45,7 +43,7 @@ export const POST = async (request: Request) => {
     return new NextResponse(
       JSON.stringify({ 
         message: "Đăng ký thành công!",
-        data: data, 
+        data: data,
       }),
       { 
         status: 200,
@@ -54,7 +52,6 @@ export const POST = async (request: Request) => {
     );
 
   } catch (error) {
-    
     return handleApiError(error);
   }
 };
