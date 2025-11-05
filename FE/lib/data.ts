@@ -17,7 +17,6 @@ interface LaravelProduct {
   reviews?: { rating: number }[];
 }
 
-/** Hai kiểu response phổ biến của Laravel */
 type LaravelPaginatePlain<T> = {
   data: T[];
   current_page: number;
