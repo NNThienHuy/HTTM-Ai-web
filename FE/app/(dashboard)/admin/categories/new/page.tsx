@@ -19,7 +19,6 @@ const DashboardNewCategoryPage = () => {
           name: convertCategoryNameToURLFriendly(categoryInput.name),
         }),
       };
-      // sending API request for creating new cateogry
       apiClient.post(`/api/categories`, requestOptions)
         .then((response) => {
           if (response.status === 201) {

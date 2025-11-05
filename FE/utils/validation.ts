@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-// Common validation patterns
 export const commonValidations = {
-  // Email validation with comprehensive checks
   email: z
     .string()
     .min(1, "Email is required")
@@ -24,7 +22,6 @@ export const commonValidations = {
       "Email contains invalid characters"
     ),
 
-  // Strong password validation
   password: z
     .string()
     .min(8, "Password must be at least 8 characters long")
@@ -35,7 +32,6 @@ export const commonValidations = {
     )
     .refine(
       (password) => {
-        // Check for common weak passwords
         const commonPasswords = [
           "password", "123456", "qwerty", "abc123", "password123",
           "admin", "letmein", "welcome", "monkey", "dragon"
@@ -45,7 +41,6 @@ export const commonValidations = {
       "Password is too common, please choose a stronger password"
     ),
 
-  // Request size validation
   validateRequestSize: (contentLength: number | null) => {
     const MAX_REQUEST_SIZE = 1024 * 1024; // 1MB limit
     if (contentLength && contentLength > MAX_REQUEST_SIZE) {
@@ -53,7 +48,6 @@ export const commonValidations = {
     }
   },
 
-  // Rate limiting helper (basic implementation)
   rateLimit: new Map<string, { count: number; resetTime: number }>(),
   
   checkRateLimit: (identifier: string, maxRequests: number = 5, windowMs: number = 15 * 60 * 1000) => {
@@ -74,18 +68,26 @@ export const commonValidations = {
   }
 };
 
-// Sanitization helpers
+export const registrationSchema = z.object({
+  name: z
+    .string()
+    .min(3, "Tên phải có ít nhất 3 ký tự")
+    .max(100, "Tên quá dài")
+    .trim(),
+  email: commonValidations.email,
+  password: commonValidations.password,
+});
+
 export const sanitizeInput = {
-  // Remove potentially dangerous characters
+ 
   sanitizeString: (input: string): string => {
     return input
-      .replace(/[<>]/g, '') // Remove < and >
-      .replace(/javascript:/gi, '') // Remove javascript: protocol
-      .replace(/on\w+\s*=/gi, '') // Remove event handlers
+      .replace(/[<>]/g, '') 
+      .replace(/javascript:/gi, '') 
+      .replace(/on\w+\s*=/gi, '') 
       .trim();
   },
 
-  // Validate and sanitize JSON input
   validateJsonInput: async (request: Request) => {
     const contentLength = request.headers.get("content-length");
     commonValidations.validateRequestSize(contentLength ? parseInt(contentLength) : null);
