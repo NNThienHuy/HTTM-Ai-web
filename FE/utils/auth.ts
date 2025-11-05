@@ -3,7 +3,7 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials"; 
 import config from "@/lib/config";
 
-const LARAVEL_API_LOGIN_URL = `${config.apiBaseUrl}/api/auth/login`; 
+const LARAVEL_API_LOGIN_URL = `${config.apiBaseUrl}/api/login`; 
 
 interface LaravelUser {
   id: number;
