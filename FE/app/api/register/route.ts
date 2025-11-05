@@ -5,7 +5,7 @@ import {
 } from "@/utils/validation";
 import { handleApiError, AppError } from "@/utils/errorHandler";
 
-const LARAVEL_API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/register`;
+const LARAVEL_API_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/register`;
 
 export const POST = async (request: Request) => {
   try {
