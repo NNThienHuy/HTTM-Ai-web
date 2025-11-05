@@ -14,7 +14,7 @@ interface LaravelUser {
 
 interface LaravelLoginResponse {
   user: LaravelUser;
-  access_token: string; 
+  token: string; 
   message?: string;
 }
 
@@ -58,14 +58,14 @@ export const authOptions: NextAuthOptions = {
             throw new Error(data.message || "Email hoặc mật khẩu không đúng");
           }
 
-          if (data && data.user && data.access_token) {
+          if (data && data.user && data.token) {
             const user = data.user;
             return {
               id: user.id.toString(),
               name: user.name,
               email: user.email,
               role: user.role ?? "user",
-              accessToken: data.access_token, 
+              accessToken: data.token, 
             };
           } else {
             return null; 
