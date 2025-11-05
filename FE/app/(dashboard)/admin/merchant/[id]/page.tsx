@@ -95,8 +95,6 @@ const handleInputChange = (
  const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   try {
-    // This is the correct way to use apiClient.put
-    // It should just take the URL and the data object
     const response = await apiClient.put(`/api/merchants/${id}`, formData);
 
     if (!response.ok) {
@@ -104,7 +102,7 @@ const handleInputChange = (
     }
 
     toast.success("Merchant updated successfully");
-    fetchMerchant(); // Refresh data
+    fetchMerchant(); 
   } catch (error) {
     console.error("Error updating merchant:", error);
     toast.error("Failed to update merchant");
@@ -141,7 +139,7 @@ const handleInputChange = (
       <div className="flex h-screen">
         <DashboardSidebar />
         <div className="flex-1 p-10 flex items-center justify-center">
-          Loading merchant details...
+          Đang tải thông tin chi tiết về người bán...
         </div>
       </div>
     );
@@ -152,7 +150,7 @@ const handleInputChange = (
       <div className="flex h-screen">
         <DashboardSidebar />
         <div className="flex-1 p-10 flex items-center justify-center">
-          Merchant not found
+          Không tìm thấy người bán
         </div>
       </div>
     );
@@ -163,19 +161,19 @@ const handleInputChange = (
       <DashboardSidebar />
       <div className="flex-1 p-10 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Merchant Details</h1>
+          <h1 className="text-3xl font-bold">Chi tiết về người bán</h1>
           <div className="flex gap-4">
             <Link
               href="/admin/merchant"
               className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition"
             >
-              Back to Merchants
+              Quay lại danh sách người bán
             </Link>
             <button
               onClick={handleDelete}
               className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition"
             >
-              Delete Merchant
+              Xóa người bán
             </button>
           </div>
         </div>
@@ -249,20 +247,20 @@ const handleInputChange = (
                 type="submit"
                 className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition"
               >
-                Save Changes
+                Lưu thay đổi
               </button>
             </div>
           </form>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">Merchant Products</h2>
+          <h2 className="text-xl font-bold mb-4">Sản phẩm thương mại</h2>
           {merchant.products.length > 0 ? (
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="py-3 text-left">Title</th>
-                  <th className="py-3 text-left">Price</th>
+                  <th className="py-3 text-left">Tiêu đề</th>
+                  <th className="py-3 text-left">Giá</th>
                   <th className="py-3 text-left">Còn hàng</th>
                   <th className="py-3 text-left">Actions</th>
                 </tr>
@@ -278,7 +276,7 @@ const handleInputChange = (
                         href={`/admin/products/${product.id}`}
                         className="text-blue-500 hover:underline"
                       >
-                        View
+                        Chi tiết
                       </Link>
                     </td>
                   </tr>
@@ -286,7 +284,7 @@ const handleInputChange = (
               </tbody>
             </table>
           ) : (
-            <p className="text-gray-500">No products for this merchant yet.</p>
+            <p className="text-gray-500">Chưa có sản phẩm nào cho nhà cung cấp này.</p>
           )}
         </div>
       </div>

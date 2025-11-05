@@ -28,58 +28,47 @@ const CheckoutPage = () => {
   const { products, total, clearCart } = useProductStore();
   const router = useRouter();
 
-  // Add validation functions that match server requirements
   const validateForm = () => {
     const errors: string[] = [];
-    
-    // Name validation
+
     if (!checkoutForm.name.trim() || checkoutForm.name.trim().length < 2) {
       errors.push("Name must be at least 2 characters");
     }
-    
-    // Lastname validation
+
     if (!checkoutForm.lastname.trim() || checkoutForm.lastname.trim().length < 2) {
       errors.push("Lastname must be at least 2 characters");
     }
-    
-    // Email validation
+
     const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
     if (!checkoutForm.email.trim() || !emailRegex.test(checkoutForm.email.trim())) {
       errors.push("Please enter a valid email address");
     }
-    
-    // Phone validation (must be at least 10 digits)
+
     const phoneDigits = checkoutForm.phone.replace(/[^0-9]/g, '');
     if (!checkoutForm.phone.trim() || phoneDigits.length < 10) {
       errors.push("Phone number must be at least 10 digits");
     }
-    
-    // Company validation
+
     if (!checkoutForm.company.trim() || checkoutForm.company.trim().length < 5) {
       errors.push("Company must be at least 5 characters");
     }
-    
-    // Address validation
+
     if (!checkoutForm.adress.trim() || checkoutForm.adress.trim().length < 5) {
       errors.push("Address must be at least 5 characters");
     }
-    
-    // Apartment validation (updated to 1 character minimum)
+
     if (!checkoutForm.apartment.trim() || checkoutForm.apartment.trim().length < 1) {
       errors.push("Apartment is required");
     }
-    
-    // City validation
+
     if (!checkoutForm.city.trim() || checkoutForm.city.trim().length < 5) {
       errors.push("City must be at least 5 characters");
     }
-    
-    // Country validation
+
     if (!checkoutForm.country.trim() || checkoutForm.country.trim().length < 5) {
       errors.push("Country must be at least 5 characters");
     }
-    
-    // Postal code validation
+
     if (!checkoutForm.postalCode.trim() || checkoutForm.postalCode.trim().length < 3) {
       errors.push("Postal code must be at least 3 characters");
     }
@@ -88,7 +77,6 @@ const CheckoutPage = () => {
   };
 
   const makePurchase = async () => {
-    // Client-side validation first
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
       validationErrors.forEach(error => {
@@ -97,7 +85,6 @@ const CheckoutPage = () => {
       return;
     }
 
-    // Basic client-side checks for required fields (UX only)
     const requiredFields = [
       'name', 'lastname', 'phone', 'email', 'company', 
       'adress', 'apartment', 'city', 'country', 'postalCode'
@@ -126,8 +113,6 @@ const CheckoutPage = () => {
 
     try {
       console.log("🚀 Starting order creation...");
-      
-      // Get user ID if logged in
       let userId = null;
       if (session?.user?.email) {
         try {
@@ -144,8 +129,7 @@ const CheckoutPage = () => {
           console.log("⚠️  Error getting user ID:", userError);
         }
       }
-      
-      // Prepare the order data
+
       const orderData = {
         name: checkoutForm.name.trim(),
         lastname: checkoutForm.lastname.trim(),
@@ -160,45 +144,41 @@ const CheckoutPage = () => {
         city: checkoutForm.city.trim(),
         country: checkoutForm.country.trim(),
         orderNotice: checkoutForm.orderNotice.trim(),
-        userId: userId // Add user ID for notifications
+        userId: userId 
       };
 
       console.log("📋 Order data being sent:", orderData);
 
-      // Send order data to server for validation and processing
       const response = await apiClient.post("/api/orders", orderData);
 
       console.log("📡 API Response received:");
       console.log("  Status:", response.status);
       console.log("  Status Text:", response.statusText);
       console.log("  Response OK:", response.ok);
-      
-      // Check if response is ok before parsing
+
       if (!response.ok) {
         console.error("❌ Response not OK:", response.status, response.statusText);
         const errorText = await response.text();
         console.error("Error response body:", errorText);
-        
-        // Try to parse as JSON to get detailed error info
+
         try {
           const errorData = JSON.parse(errorText);
           console.error("Parsed error data:", errorData);
-          
-          // Handle different error types
+
           if (response.status === 409) {
-            // Duplicate order error
+           
             toast.error(errorData.details || errorData.error || "Duplicate order detected");
-            return; // Don't throw, just return to stop execution
+            return; 
           } else if (errorData.details && Array.isArray(errorData.details)) {
-            // Validation errors
+          
             errorData.details.forEach((detail: any) => {
               toast.error(`${detail.field}: ${detail.message}`);
             });
           } else if (typeof errorData.details === 'string') {
-            // Single error message in details
+            
             toast.error(errorData.details);
           } else {
-            // Fallback error message
+            
             toast.error(errorData.error || "Order creation failed");
           }
         } catch (parseError) {
@@ -206,7 +186,7 @@ const CheckoutPage = () => {
           toast.error("Order creation failed. Please try again.");
         }
         
-        return; // Stop execution instead of throwing
+        return;
       }
 
       const data = await response.json();
@@ -223,7 +203,6 @@ const CheckoutPage = () => {
 
       console.log("✅ Order ID validation passed, proceeding with product addition...");
 
-      // Add products to order
       for (let i = 0; i < products.length; i++) {
         console.log(`🛍️ Adding product ${i + 1}/${products.length}:`, {
           orderId,
@@ -237,7 +216,6 @@ const CheckoutPage = () => {
 
       console.log(" All products added successfully!");
 
-      // Clear form and cart
       setCheckoutForm({
         name: "",
         lastname: "",
@@ -252,10 +230,8 @@ const CheckoutPage = () => {
         orderNotice: "",
       });
       clearCart();
-      
-      // Refresh notification count if user is logged in
+
       try {
-        // This will trigger a refresh of notifications in the background
         window.dispatchEvent(new CustomEvent('orderCompleted'));
       } catch (error) {
         console.log('Note: Could not trigger notification refresh');
@@ -267,15 +243,13 @@ const CheckoutPage = () => {
       }, 1000);
     } catch (error: any) {
       console.error("💥 Error in makePurchase:", error);
-      
-      // Handle server validation errors
+
       if (error.response?.status === 400) {
         console.log(" Handling 400 error...");
         try {
           const errorData = await error.response.json();
           console.log("Error data:", errorData);
           if (errorData.details && Array.isArray(errorData.details)) {
-            // Show specific validation errors
             errorData.details.forEach((detail: any) => {
               toast.error(`${detail.field}: ${detail.message}`);
             });
@@ -669,7 +643,7 @@ const CheckoutPage = () => {
                     className="block text-sm font-medium text-gray-700"
                   >
                     
-Quốc gia *
+                  Quốc gia *
                   </label>
                   <div className="mt-1">
                     <input
@@ -697,7 +671,7 @@ Quốc gia *
                     className="block text-sm font-medium text-gray-700"
                   >
                     
-Mã bưu chính *
+                  Mã bưu chính *
                   </label>
                   <div className="mt-1">
                     <input

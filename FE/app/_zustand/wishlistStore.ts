@@ -1,5 +1,11 @@
 import { create } from "zustand";
 
+export interface ProductInWishlist {
+  id: string;
+  name: string;
+  price: number;
+}
+
 export type State = {
   wishlist: ProductInWishlist[];
   wishQuantity: number;

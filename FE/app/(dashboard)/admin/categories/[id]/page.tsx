@@ -26,7 +26,6 @@ const DashboardSingleCategory = ({
     const requestOptions = {
       method: "DELETE",
     };
-    // sending API request for deleting a category
     apiClient.delete(`/api/categories/${id}`, requestOptions)
       .then((response) => {
         if (response.status === 204) {
@@ -50,7 +49,6 @@ const DashboardSingleCategory = ({
           name: convertCategoryNameToURLFriendly(categoryInput.name),
         }),
       };
-      // sending API request for updating a category
       apiClient.put(`/api/categories/${id}`, requestOptions)
         .then((response) => {
           if (response.status === 200) {
@@ -70,7 +68,6 @@ const DashboardSingleCategory = ({
   };
 
   useEffect(() => {
-    // sending API request for getting single categroy
     apiClient.get(`/api/categories/${id}`)
       .then((res) => {
         return res.json();
@@ -86,11 +83,11 @@ const DashboardSingleCategory = ({
     <div className="bg-white flex justify-start max-w-screen-2xl mx-auto xl:h-full max-xl:flex-col max-xl:gap-y-5">
       <DashboardSidebar />
       <div className="flex flex-col gap-y-7 xl:pl-5 max-xl:px-5 w-full">
-        <h1 className="text-3xl font-semibold">Category details</h1>
+        <h1 className="text-3xl font-semibold">Chi tiết danh mục</h1>
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Category name:</span>
+              <span className="label-text">Tên danh mục:</span>
             </div>
             <input
               type="text"
@@ -109,19 +106,19 @@ const DashboardSingleCategory = ({
             className="uppercase bg-blue-500 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2"
             onClick={updateCategory}
           >
-            Update category
+            Cập nhật danh mục
           </button>
           <button
             type="button"
             className="uppercase bg-red-600 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-red-700 hover:text-white focus:outline-none focus:ring-2"
             onClick={deleteCategory}
           >
-            Delete category
+            Xóa danh mục
           </button>
         </div>
         <p className="text-xl text-error max-sm:text-lg">
-          Note: if you delete this category, you will delete all products
-          associated with the category.
+          Lưu ý: nếu bạn xóa danh mục này, bạn sẽ xóa tất cả sản phẩm
+          liên quan đến danh mục đó.
         </p>
       </div>
     </div>

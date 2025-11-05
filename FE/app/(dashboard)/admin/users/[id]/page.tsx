@@ -106,7 +106,7 @@ const DashboardSingleUserPage = ({
     <div className="bg-white flex justify-start max-w-screen-2xl mx-auto xl:h-full max-xl:flex-col max-xl:gap-y-5">
       <DashboardSidebar />
       <div className="flex flex-col gap-y-7 xl:pl-5 max-xl:px-5 w-full">
-        <h1 className="text-3xl font-semibold">User details</h1>
+        <h1 className="text-3xl font-semibold">Chi tiết người dùng</h1>
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
@@ -126,7 +126,7 @@ const DashboardSingleUserPage = ({
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">New password:</span>
+              <span className="label-text">Mật khẩu mới:</span>
             </div>
             <input
               type="password"
@@ -142,7 +142,7 @@ const DashboardSingleUserPage = ({
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">User role: </span>
+              <span className="label-text">Vai trò người dùng: </span>
             </div>
             <select
               className="select select-bordered"
@@ -162,14 +162,14 @@ const DashboardSingleUserPage = ({
             className="uppercase bg-blue-500 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2"
             onClick={updateUser}
           >
-            Update user
+            Cập nhật người dùng
           </button>
           <button
             type="button"
             className="uppercase bg-red-600 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-red-700 hover:text-white focus:outline-none focus:ring-2"
             onClick={deleteUser}
           >
-            Delete user
+            Xóa người dùng
           </button>
         </div>
       </div>

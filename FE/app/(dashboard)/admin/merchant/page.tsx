@@ -46,26 +46,26 @@ export default function MerchantPage() {
       <DashboardSidebar />
       <div className="flex-1 p-10 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Merchants</h1>
+          <h1 className="text-3xl font-bold">Người bán</h1>
           <Link
             href="/admin/merchant/new"
             className="bg-blue-500 text-white px-6 py-2 rounded-md hover:bg-blue-600 transition"
           >
-            Add Merchant
+            Thêm người bán
           </Link>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">
           {loading ? (
-            <div className="text-center py-10">Loading merchants...</div>
+            <div className="text-center py-10">Đang tải người bán...</div>
           ) : merchants.length > 0 ? (
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="py-3 text-left">Name</th>
+                  <th className="py-3 text-left">Tên</th>
                   <th className="py-3 text-left">Email</th>
-                  <th className="py-3 text-left">Status</th>
-                  <th className="py-3 text-left">Products</th>
+                  <th className="py-3 text-left">Tình trạng</th>
+                  <th className="py-3 text-left">Sản phẩm</th>
                   <th className="py-3 text-left">Actions</th>
                 </tr>
               </thead>
@@ -91,13 +91,13 @@ export default function MerchantPage() {
                         href={`/admin/merchant/${merchant.id}`}
                         className="text-blue-500 hover:underline mr-3"
                       >
-                        View
+                        Chi tiết
                       </Link>
                       <Link
                         href={`/admin/merchant/${merchant.id}`}
                         className="text-blue-500 hover:underline"
                       >
-                        Edit
+                        Chỉnh sửa
                       </Link>
                     </td>
                   </tr>
@@ -105,7 +105,7 @@ export default function MerchantPage() {
               </tbody>
             </table>
           ) : (
-            <div className="text-center py-10">No merchants found</div>
+            <div className="text-center py-10">Không sản phẩm nào được tìm thấy</div>
           )}
         </div>
       </div>

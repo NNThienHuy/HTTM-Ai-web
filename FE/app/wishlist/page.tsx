@@ -3,7 +3,7 @@ import { Loader } from "@/components/Loader";
 import dynamic from "next/dynamic";
 import React, { Suspense } from "react";
 
-import { WishlistModule } from "@/components/modules/wishlist"; //slow
+import { WishlistModule } from "@/components/modules/wishlist"; 
 
 // const DynamicWishlistModule = dynamic(
 //   () =>

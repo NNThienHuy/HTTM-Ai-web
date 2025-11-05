@@ -9,23 +9,23 @@ export default function NotFound() {
             404
           </p>
           <h1 className="mt-4 text-3xl font-bold tracking-tight text-black sm:text-5xl">
-            Product not found
+            Không tìm thấy sản phẩm
           </h1>
           <p className="mt-6 text-base leading-7 text-black">
-            Sorry, we couldn’t find the product you’re looking for.
+            Xin lỗi, chúng tôi không thể tìm thấy sản phẩm bạn đang tìm kiếm.
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6 max-[350px]:flex-col max-[350px]:gap-y-5">
             <Link
               href="/"
               className="rounded-md bg-blue-500 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:text-white hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              Go back home
+              Quay lại trang chủ
             </Link>
             <Link
               href="#"
               className="text-sm font-semibold text-black hover:underline hover:underline-offset-4"
             >
-              Contact support <span aria-hidden="true">&rarr;</span>
+              Liên hệ hỗ trợ <span aria-hidden="true">&rarr;</span>
             </Link>
           </div>
         </div>

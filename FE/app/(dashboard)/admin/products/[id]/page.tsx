@@ -11,6 +11,28 @@ import {
 import { nanoid } from "nanoid";
 import apiClient from "@/lib/api";
 
+interface Product {
+  id?: string;
+  title: string;
+  slug: string;
+  price: number;
+  manufacturer: string;
+  description: string;
+  mainImage?: string;
+  inStock?: number;
+  categoryId?: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+}
+
+interface OtherImages {
+  id?: string;
+  image: string;
+}
+
 interface DashboardProductDetailsProps {
   params: Promise<{ id: string }>;
 }
@@ -26,7 +48,6 @@ const DashboardProductDetails = ({
   const [otherImages, setOtherImages] = useState<OtherImages[]>([]);
   const router = useRouter();
 
-  // functionality for deleting product
   const deleteProduct = async () => {
     const requestOptions = {
       method: "DELETE",
@@ -51,7 +72,6 @@ const DashboardProductDetails = ({
       });
   };
 
-  // functionality for updating product
   const updateProduct = async () => {
     if (
       product?.title === "" ||
@@ -83,7 +103,6 @@ const DashboardProductDetails = ({
       });
   };
 
-  // functionality for uploading main image file
   const uploadFile = async (file: any) => {
     const formData = new FormData();
     formData.append("uploadedFile", file);
@@ -105,24 +124,6 @@ const DashboardProductDetails = ({
     }
   };
 
-  // fetching main product data including other product images
-  const fetchProductData = async () => {
-    apiClient.get(`/api/products/${id}`)
-      .then((res) => {
-        return res.json();
-      })
-      .then((data) => {
-        setProduct(data);
-      });
-
-    const imagesData = await apiClient.get(`/api/images/${id}`, {
-      cache: "no-store",
-    });
-    const images = await imagesData.json();
-    setOtherImages((currentImages) => images);
-  };
-
-  // fetching all product categories. It will be used for displaying categories in select category input
   const fetchCategories = async () => {
     apiClient.get(`/api/categories`)
       .then((res) => {
@@ -134,6 +135,22 @@ const DashboardProductDetails = ({
   };
 
   useEffect(() => {
+    const fetchProductData = async () => {
+      apiClient.get(`/api/products/${id}`)
+        .then((res) => {
+          return res.json();
+        })
+        .then((data) => {
+          setProduct(data);
+        });
+
+      const imagesData = await apiClient.get(`/api/images/${id}`, {
+        cache: "no-store",
+      });
+      const images = await imagesData.json();
+      setOtherImages((currentImages) => images);
+    };
+
     fetchCategories();
     fetchProductData();
   }, [id]);
@@ -142,13 +159,13 @@ const DashboardProductDetails = ({
     <div className="bg-white flex justify-start max-w-screen-2xl mx-auto xl:h-full max-xl:flex-col max-xl:gap-y-5">
       <DashboardSidebar />
       <div className="flex flex-col gap-y-7 xl:ml-5 w-full max-xl:px-5">
-        <h1 className="text-3xl font-semibold">Product details</h1>
+        <h1 className="text-3xl font-semibold">Chi tiết sản phẩm</h1>
         {/* Product name input div - start */}
         
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Product name:</span>
+              <span className="label-text">Tên sản phẩm:</span>
             </div>
             <input
               type="text"
@@ -166,7 +183,7 @@ const DashboardProductDetails = ({
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Product price:</span>
+              <span className="label-text">Giá:</span>
             </div>
             <input
               type="text"
@@ -183,7 +200,7 @@ const DashboardProductDetails = ({
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Manufacturer:</span>
+              <span className="label-text">Nhà sản xuất:</span>
             </div>
             <input
               type="text"
@@ -222,7 +239,7 @@ const DashboardProductDetails = ({
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Is product in stock?</span>
+              <span className="label-text">Sản phẩm còn hàng không?</span>
             </div>
             <select
               className="select select-bordered"
@@ -241,7 +258,7 @@ const DashboardProductDetails = ({
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Category:</span>
+              <span className="label-text">Danh mục:</span>
             </div>
             <select
               className="select select-bordered"
@@ -309,7 +326,7 @@ const DashboardProductDetails = ({
         <div>
           <label className="form-control">
             <div className="label">
-              <span className="label-text">Product description:</span>
+              <span className="label-text">Mô tả sản phẩm:</span>
             </div>
             <textarea
               className="textarea textarea-bordered h-24"
@@ -328,20 +345,19 @@ const DashboardProductDetails = ({
             onClick={updateProduct}
             className="uppercase bg-blue-500 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2"
           >
-            Update product
+            Cập nhật sản phẩm
           </button>
           <button
             type="button"
             className="uppercase bg-red-600 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-red-700 hover:text-white focus:outline-none focus:ring-2"
             onClick={deleteProduct}
           >
-            Delete product
+            Xóa sản phẩm
           </button>
         </div>
         {/* Action buttons div - end */}
         <p className="text-xl max-sm:text-lg text-error">
-          To delete the product you first need to delete all its records in
-          orders (customer_order_product table).
+          Để xóa sản phẩm, trước tiên bạn cần xóa tất cả các bản ghi của sản phẩm đó trong đơn hàng (bảng sản phẩm đơn hàng của khách hàng).
         </p>
       </div>
     </div>

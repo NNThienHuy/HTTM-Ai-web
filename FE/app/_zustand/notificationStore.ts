@@ -11,8 +11,7 @@ interface NotificationState {
   error: string | null;
   filters: NotificationFilters;
   selectedIds: string[];
-  
-  // Actions
+
   setNotifications: (response: NotificationResponse) => void;
   addNotification: (notification: Notification) => void;
   markAsRead: (id: string) => void;
@@ -29,7 +28,6 @@ interface NotificationState {
 }
 
 export const useNotificationStore = create<NotificationState>((set, get) => ({
-  // Initial state
   notifications: [],
   unreadCount: 0,
   total: 0,
@@ -45,7 +43,6 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   },
   selectedIds: [],
 
-  // Actions
   setNotifications: (response: NotificationResponse) => 
     set({
       notifications: response.notifications,
@@ -96,7 +93,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   setFilters: (newFilters: Partial<NotificationFilters>) =>
     set(state => ({
       filters: { ...state.filters, ...newFilters },
-      selectedIds: [] // Clear selection when filters change
+      selectedIds: [] 
     })),
 
   toggleSelection: (id: string) =>

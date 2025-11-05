@@ -6,10 +6,14 @@ import React, { useEffect, useState } from "react";
 import { formatCategoryName } from "../../../../utils/categoryFormating";
 import apiClient from "@/lib/api";
 
+type Category = {
+  id: string;
+  name: string;
+};
+
 const DashboardCategory = () => {
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // getting all categories to be displayed on the all categories page
   useEffect(() => {
     apiClient.get("/api/categories")
       .then((res) => {
@@ -25,7 +29,7 @@ const DashboardCategory = () => {
       <DashboardSidebar />
       <div className="w-full">
         <h1 className="text-3xl font-semibold text-center mb-5">
-          All Categories
+          Tất cả danh mục
         </h1>
         <div className="flex justify-end mb-5">
           <Link href="/admin/categories/new">
@@ -49,7 +53,7 @@ const DashboardCategory = () => {
                     <input type="checkbox" className="checkbox" />
                   </label>
                 </th>
-                <th>Name</th>
+                <th>Tên</th>
                 <th></th>
               </tr>
             </thead>
@@ -74,7 +78,7 @@ const DashboardCategory = () => {
                         href={`/admin/categories/${category?.id}`}
                         className="btn btn-ghost btn-xs"
                       >
-                        details
+                        Chi tiết
                       </Link>
                     </th>
                   </tr>
@@ -84,7 +88,7 @@ const DashboardCategory = () => {
             <tfoot>
               <tr>
                 <th></th>
-                <th>Name</th>
+                <th>Tên</th>
                 <th></th>
               </tr>
             </tfoot>

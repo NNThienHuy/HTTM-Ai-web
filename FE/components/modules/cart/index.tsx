@@ -23,7 +23,7 @@ export const CartModule = () => {
     <form className="mt-12 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12 xl:gap-x-16">
       <section aria-labelledby="cart-heading" className="lg:col-span-7">
         <h2 id="cart-heading" className="sr-only">
-          Items in your shopping cart
+          Các mặt hàng trong giỏ hàng của bạn
         </h2>
 
         <ul
@@ -74,7 +74,7 @@ export const CartModule = () => {
                         type="button"
                         className="-m-2 inline-flex p-2 text-gray-400 hover:text-gray-500"
                       >
-                        <span className="sr-only">Remove</span>
+                        <span className="sr-only">Xóa</span>
                         <FaXmark className="h-5 w-5" aria-hidden="true" />
                       </button>
                     </div>
@@ -129,7 +129,7 @@ export const CartModule = () => {
                 className="ml-2 flex-shrink-0 text-gray-400 hover:text-gray-500"
               >
                 <span className="sr-only">
-                  Learn more about how shipping is calculated
+                  Tìm hiểu thêm về cách tính phí vận chuyển
                 </span>
                 <FaCircleQuestion
                   className="h-5 w-5"
@@ -147,7 +147,7 @@ export const CartModule = () => {
                 className="ml-2 flex-shrink-0 text-gray-400 hover:text-gray-500"
               >
                 <span className="sr-only">
-                  Learn more about how tax is calculated
+                  Tìm hiểu thêm về cách tính thuế
                 </span>
                 <FaCircleQuestion
                   className="h-5 w-5"

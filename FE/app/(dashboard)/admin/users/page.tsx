@@ -5,11 +5,16 @@ import { nanoid } from "nanoid";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
+interface User {
+  id: string;
+  email: string;
+  role: string;
+}
+
 const DashboardUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    // sending API request for all users
     apiClient.get("/api/users")
       .then((res) => {
         return res.json();
@@ -47,7 +52,7 @@ const DashboardUsers = () => {
                   </label>
                 </th>
                 <th>Email</th>
-                <th>Role</th>
+                <th>Vai trò người dùng</th>
                 <th></th>
               </tr>
             </thead>
@@ -75,7 +80,7 @@ const DashboardUsers = () => {
                         href={`/admin/users/${user?.id}`}
                         className="btn btn-ghost btn-xs"
                       >
-                        details
+                        Chi tiết
                       </Link>
                     </th>
                   </tr>
@@ -86,7 +91,7 @@ const DashboardUsers = () => {
               <tr>
                 <th></th>
                 <th>Email</th>
-                <th>Role</th>
+                <th>Vai trò người dùng</th>
                 <th></th>
               </tr>
             </tfoot>

@@ -27,6 +27,24 @@ interface OrderProduct {
   };
 }
 
+interface Order {
+  id: string;
+  adress: string;
+  apartment: string;
+  company: string;
+  dateTime: string;
+  email: string;
+  lastname: string;
+  name: string;
+  phone: string;
+  postalCode: string;
+  city: string;
+  country: string;
+  orderNotice: string;
+  status: "processing" | "delivered" | "canceled";
+  total: number;
+}
+
 const AdminSingleOrder = () => {
   const [orderProducts, setOrderProducts] = useState<OrderProduct[]>();
   const [order, setOrder] = useState<Order>({
@@ -144,11 +162,11 @@ const AdminSingleOrder = () => {
     <div className="bg-white flex justify-start max-w-screen-2xl mx-auto xl:h-full max-xl:flex-col max-xl:gap-y-5">
       <DashboardSidebar />
       <div className="flex flex-col gap-y-7 xl:ml-5 w-full max-xl:px-5">
-        <h1 className="text-3xl font-semibold">Order details</h1>
+        <h1 className="text-3xl font-semibold">Chi tiết đơn hàng</h1>
         <div className="mt-5">
           <label className="w-full">
             <div>
-              <span className="text-xl font-bold">Order ID:</span>
+              <span className="text-xl font-bold">ID:</span>
               <span className="text-base"> {order?.id}</span>
             </div>
           </label>
@@ -157,7 +175,7 @@ const AdminSingleOrder = () => {
           <div>
             <label className="form-control w-full max-w-xs">
               <div className="label">
-                <span className="label-text">Name:</span>
+                <span className="label-text">Tên:</span>
               </div>
               <input
                 type="text"
@@ -170,7 +188,7 @@ const AdminSingleOrder = () => {
           <div>
             <label className="form-control w-full max-w-xs">
               <div className="label">
-                <span className="label-text">Lastname:</span>
+                <span className="label-text">Họ:</span>
               </div>
               <input
                 type="text"
@@ -187,7 +205,7 @@ const AdminSingleOrder = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Phone number:</span>
+              <span className="label-text">Số điện thoại:</span>
             </div>
             <input
               type="text"
@@ -201,7 +219,7 @@ const AdminSingleOrder = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Email adress:</span>
+              <span className="label-text">Email:</span>
             </div>
             <input
               type="email"
@@ -215,7 +233,7 @@ const AdminSingleOrder = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Company (optional):</span>
+              <span className="label-text">Công ty (tùy chọn):</span>
             </div>
             <input
               type="text"
@@ -230,7 +248,7 @@ const AdminSingleOrder = () => {
           <div>
             <label className="form-control w-full max-w-xs">
               <div className="label">
-                <span className="label-text">Address:</span>
+                <span className="label-text">Địa chỉ:</span>
               </div>
               <input
                 type="text"
@@ -244,7 +262,7 @@ const AdminSingleOrder = () => {
           <div>
             <label className="form-control w-full max-w-xs">
               <div className="label">
-                <span className="label-text">Apartment, suite, etc. :</span>
+                <span className="label-text">Căn hộ, phòng suite, v.v. :</span>
               </div>
               <input
                 type="text"
@@ -276,7 +294,7 @@ const AdminSingleOrder = () => {
           <div>
             <label className="form-control w-full max-w-xs">
               <div className="label">
-                <span className="label-text">Country:</span>
+                <span className="label-text">Quốc Gia:</span>
               </div>
               <input
                 type="text"
@@ -292,7 +310,7 @@ const AdminSingleOrder = () => {
           <div>
             <label className="form-control w-full max-w-xs">
               <div className="label">
-                <span className="label-text">Postal Code:</span>
+                <span className="label-text">Mã bưu chính:</span>
               </div>
               <input
                 type="text"
@@ -309,7 +327,7 @@ const AdminSingleOrder = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Order status</span>
+              <span className="label-text">Tình trạng đơn hàng</span>
             </div>
             <select
               className="select select-bordered"
@@ -324,16 +342,16 @@ const AdminSingleOrder = () => {
                 })
               }
             >
-              <option value="processing">Processing</option>
-              <option value="delivered">Delivered</option>
-              <option value="canceled">Canceled</option>
+              <option value="processing">Đang xử lý</option>
+              <option value="delivered">Đã giao</option>
+              <option value="canceled">Đã hủy</option>
             </select>
           </label>
         </div>
         <div>
           <label className="form-control">
             <div className="label">
-              <span className="label-text">Order notice:</span>
+              <span className="label-text">Ghi chú:</span>
             </div>
             <textarea
               className="textarea textarea-bordered h-24"
@@ -359,15 +377,15 @@ const AdminSingleOrder = () => {
                   {product?.product?.title}
                 </Link>
                 <p>
-                  ${product?.product?.price} * {product?.quantity} items
+                  ${product?.product?.price} * {product?.quantity} mặt hàng
                 </p>
               </div>
             </div>
           ))}
           <div className="flex flex-col gap-y-2 mt-10">
-            <p className="text-2xl">Subtotal: ${order?.total}</p>
-            <p className="text-2xl">Tax 20%: ${order?.total / 5}</p>
-            <p className="text-2xl">Shipping: $5</p>
+            <p className="text-2xl">Tổng: ${order?.total}</p>
+            <p className="text-2xl">Thuế 20%: ${order?.total / 5}</p>
+            <p className="text-2xl">Phí Ship: $5</p>
             <p className="text-3xl font-semibold">
               Total: ${order?.total + order?.total / 5 + 5}
             </p>
@@ -378,14 +396,14 @@ const AdminSingleOrder = () => {
               className="uppercase bg-blue-500 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2"
               onClick={updateOrder}
             >
-              Update order
+              Cập nhật đơn hàng
             </button>
             <button
               type="button"
               className="uppercase bg-red-600 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-red-700 hover:text-white focus:outline-none focus:ring-2"
               onClick={deleteOrder}
             >
-              Delete order
+              Xóa đơn hàng
             </button>
           </div>
         </div>

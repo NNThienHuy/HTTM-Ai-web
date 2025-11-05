@@ -45,7 +45,6 @@ const NotificationsPage = () => {
     filters.isRead === undefined ? 'all' : filters.isRead ? 'read' : 'unread'
   );
 
-  // Redirect if not authenticated
   useEffect(() => {
     if (status === 'loading') return;
     if (!session) {
@@ -53,8 +52,6 @@ const NotificationsPage = () => {
       return;
     }
   }, [session, status, router]);
-
-  // Sync local state with store filters
   useEffect(() => {
     setSearchTerm(filters.search || '');
     setSelectedType(filters.type || 'all');
@@ -63,14 +60,12 @@ const NotificationsPage = () => {
     );
   }, [filters]);
 
-  // Initial fetch
   useEffect(() => {
     if (session) {
       fetchNotifications();
     }
   }, [session, fetchNotifications]);
 
-  // Handle search
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     updateFilters({ 
@@ -80,7 +75,6 @@ const NotificationsPage = () => {
     });
   };
 
-  // Handle filter changes
   const handleTypeFilter = (type: string) => {
     setSelectedType(type);
     updateFilters({
@@ -99,7 +93,6 @@ const NotificationsPage = () => {
     });
   };
 
-  // Handle bulk actions
   const handleBulkMarkAsRead = async () => {
     if (selectedIds.length > 0) {
       await markSelectedAsRead();
@@ -120,7 +113,6 @@ const NotificationsPage = () => {
     }
   };
 
-  // Loading state
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -129,7 +121,6 @@ const NotificationsPage = () => {
     );
   }
 
-  // Not authenticated
   if (!session) {
     return null;
   }
@@ -141,10 +132,10 @@ const NotificationsPage = () => {
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-2">
             <FaBell className="text-2xl text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Notification Center</h1>
+            <h1 className="text-3xl font-bold text-gray-900">Trung tâm thông báo</h1>
           </div>
           <p className="text-gray-600">
-            Manage and view all your notifications in one place
+            Quản lý và xem tất cả thông báo của bạn ở một nơi
           </p>
         </div>
 
@@ -174,7 +165,7 @@ const NotificationsPage = () => {
           <div className="flex flex-wrap gap-4 items-center">
             <div className="flex items-center space-x-2">
               <FaFilter className="text-gray-400" />
-              <span className="text-sm font-medium text-gray-700">Filters:</span>
+              <span className="text-sm font-medium text-gray-700">Lọc:</span>
             </div>
 
             {/* Type Filter */}
@@ -183,11 +174,11 @@ const NotificationsPage = () => {
               onChange={(e) => handleTypeFilter(e.target.value)}
               className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
-              <option value="all">All Types</option>
-              <option value={NotificationType.ORDER_UPDATE}>Order Updates</option>
-              <option value={NotificationType.PAYMENT_STATUS}>Payment Status</option>
-              <option value={NotificationType.PROMOTION}>Promotions</option>
-              <option value={NotificationType.SYSTEM_ALERT}>System Alerts</option>
+              <option value="all">Tất cả</option>
+              <option value={NotificationType.ORDER_UPDATE}>Cập nhật đơn hàng</option>
+              <option value={NotificationType.PAYMENT_STATUS}>Tình trạng thanh toán</option>
+              <option value={NotificationType.PROMOTION}>Khuyến mãi</option>
+              <option value={NotificationType.SYSTEM_ALERT}>Cảnh báo hệ thống</option>
             </select>
 
             {/* Status Filter */}
@@ -196,9 +187,9 @@ const NotificationsPage = () => {
               onChange={(e) => handleStatusFilter(e.target.value)}
               className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
             >
-              <option value="all">All Status</option>
-              <option value="unread">Unread</option>
-              <option value="read">Read</option>
+              <option value="all">Tất cả tình trạng</option>
+              <option value="unread">Chưa đọc</option>
+              <option value="read">Đã đọc</option>
             </select>
 
             {/* Clear Filters */}
@@ -219,7 +210,7 @@ const NotificationsPage = () => {
               }}
               className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800 underline"
             >
-              Clear Filters
+              Xóa bộ lọc
             </button>
           </div>
         </div>
@@ -237,14 +228,14 @@ const NotificationsPage = () => {
                   className="inline-flex items-center px-3 py-1 text-sm font-medium text-blue-600 bg-white border border-blue-300 rounded-md hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
                 >
                   <FaCheckCircle className="w-4 h-4 mr-1" />
-                  Mark as Read
+                  Đánh dấu là đã đọc
                 </button>
                 <button
                   onClick={handleBulkDelete}
                   className="inline-flex items-center px-3 py-1 text-sm font-medium text-red-600 bg-white border border-red-300 rounded-md hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1"
                 >
                   <FaTrash className="w-4 h-4 mr-1" />
-                  Delete
+                  Xóa
                 </button>
               </div>
             </div>
@@ -261,7 +252,7 @@ const NotificationsPage = () => {
                 onChange={handleSelectAll}
                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
               />
-              <span>Select all notifications</span>
+              <span>Chọn tất cả thông báo</span>
             </label>
           </div>
         )}
@@ -271,7 +262,7 @@ const NotificationsPage = () => {
           {loading && notifications.length === 0 ? (
             <div className="text-center py-12">
               <FaSpinner className="animate-spin text-3xl text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">Loading notifications...</p>
+              <p className="text-gray-500">Đang tải thông báo...</p>
             </div>
           ) : error ? (
             <div className="text-center py-12">
@@ -280,19 +271,19 @@ const NotificationsPage = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <p className="text-red-600 font-medium mb-2">Error loading notifications</p>
+              <p className="text-red-600 font-medium mb-2">Lỗi khi tải thông báo</p>
               <p className="text-gray-500 mb-4">{error}</p>
               <button
                 onClick={() => fetchNotifications()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                Try Again
+                Thử lại
               </button>
             </div>
           ) : notifications.length === 0 ? (
             <div className="text-center py-12">
               <FaBell className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications found</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Không tìm thấy thông báo nào</h3>
               <p className="text-gray-500">
                 {Object.keys(filters).some(key => filters[key as keyof typeof filters] !== undefined && key !== 'page' && key !== 'limit' && key !== 'sortBy' && key !== 'sortOrder')
                   ? "Try adjusting your filters to see more notifications."
@@ -327,10 +318,10 @@ const NotificationsPage = () => {
                     {loading ? (
                       <>
                         <FaSpinner className="animate-spin inline mr-2" />
-                        Loading...
+                        Đang tải...
                       </>
                     ) : (
-                      'Load More'
+                      'Tải thêm'
                     )}
                   </button>
                 </div>
