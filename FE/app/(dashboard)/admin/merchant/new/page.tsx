@@ -64,7 +64,7 @@ export default function NewMerchantPage() {
       <DashboardSidebar />
       <div className="flex-1 p-10 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Add New Merchant</h1>
+          <h1 className="text-3xl font-bold">Thêm người bán mới</h1>
           <Link
             href="/admin/merchant"
             className="bg-gray-500 text-white px-6 py-2 rounded-md hover:bg-gray-600 transition"
@@ -76,7 +76,7 @@ export default function NewMerchantPage() {
         <div className="bg-white rounded-lg shadow-md p-6">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-gray-700 font-medium mb-2">Name</label>
+              <label className="block text-gray-700 font-medium mb-2">Tên</label>
               <input
                 type="text"
                 name="name"
@@ -99,7 +99,7 @@ export default function NewMerchantPage() {
               />
             </div>
             <div>
-              <label className="block text-gray-700 font-medium mb-2">Phone</label>
+              <label className="block text-gray-700 font-medium mb-2">Điện thoại</label>
               <input
                 type="text"
                 name="phone"
@@ -117,12 +117,12 @@ export default function NewMerchantPage() {
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded focus:outline-none focus:ring focus:border-blue-300"
               >
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
+                <option value="ACTIVE">Hoạt động</option>
+                <option value="INACTIVE">Không hoạt động</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-gray-700 font-medium mb-2">Address</label>
+              <label className="block text-gray-700 font-medium mb-2">Địa chỉ</label>
               <input
                 type="text"
                 name="address"
@@ -133,7 +133,7 @@ export default function NewMerchantPage() {
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-gray-700 font-medium mb-2">Description</label>
+              <label className="block text-gray-700 font-medium mb-2">Mô tả</label>
               <textarea
                 name="description"
                 value={formData.description}

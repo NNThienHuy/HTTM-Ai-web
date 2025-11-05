@@ -181,7 +181,7 @@ const handleInputChange = (
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-gray-700 font-medium mb-2">Name</label>
+              <label className="block text-gray-700 font-medium mb-2">Tên</label>
               <input
                 type="text"
                 name="name"
@@ -202,7 +202,7 @@ const handleInputChange = (
               />
             </div>
             <div>
-              <label className="block text-gray-700 font-medium mb-2">Phone</label>
+              <label className="block text-gray-700 font-medium mb-2">Điện thoại</label>
               <input
                 type="text"
                 name="phone"
@@ -212,19 +212,19 @@ const handleInputChange = (
               />
             </div>
             <div>
-              <label className="block text-gray-700 font-medium mb-2">Status</label>
+              <label className="block text-gray-700 font-medium mb-2">Tình trạng</label>
               <select
                 name="status"
                 value={formData.status}
                 onChange={handleInputChange}
                 className="w-full p-2 border rounded focus:outline-none focus:ring focus:border-blue-300"
               >
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
+                <option value="ACTIVE">Hoạt động</option>
+                <option value="INACTIVE">Không hoạt động</option>
               </select>
             </div>
             <div className="md:col-span-2">
-              <label className="block text-gray-700 font-medium mb-2">Address</label>
+              <label className="block text-gray-700 font-medium mb-2">Địa chỉ</label>
               <input
                 type="text"
                 name="address"
@@ -234,7 +234,7 @@ const handleInputChange = (
               />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-gray-700 font-medium mb-2">Description</label>
+              <label className="block text-gray-700 font-medium mb-2">Mô tả</label>
               <textarea
                 name="description"
                 value={formData.description}
