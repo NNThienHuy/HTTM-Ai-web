@@ -11,3 +11,8 @@ export interface Product {
   categoryId: number;
   inStock: number;
 }
+
+export interface Category {
+  id: number;
+  name: string;
+}
