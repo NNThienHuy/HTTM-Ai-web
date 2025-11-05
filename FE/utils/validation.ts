@@ -69,13 +69,9 @@ export const commonValidations = {
 };
 
 export const registrationSchema = z.object({
-  name: z
-    .string()
-    .min(3, "Tên phải có ít nhất 3 ký tự")
-    .max(100, "Tên quá dài")
-    .trim(),
-  email: commonValidations.email,
-  password: commonValidations.password,
+  name: z.string().min(3, "Tên phải có ít nhất 3 ký tự"), 
+  email: z.string().email("Email không hợp lệ"),
+  password: z.string().min(8, "Mật khẩu phải có ít nhất 8 ký tự"),
 });
 
 export const sanitizeInput = {
