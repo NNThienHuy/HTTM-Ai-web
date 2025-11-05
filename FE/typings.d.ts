@@ -1,3 +1,6 @@
+import { DefaultSession, DefaultUser } from "next-auth";
+import { DefaultJWT } from "next-auth/jwt";
+
 interface Product {
   id: string;
   slug: string;
@@ -8,10 +11,9 @@ interface Product {
   mainImage: string;
   manufacturer: string;
   categoryId: string;
-  category: {name: string}?;
+  category: { name: string }?;
   inStock: number;
 }
-
 interface Merchant {
   id: string;
   name: string;
@@ -23,14 +25,12 @@ interface Merchant {
   createdAt: string;
   updatedAt: string;
 }
-
 interface SingleProductPageProps {
   params: {
     id: string;
     productSlug: string;
   };
 }
-
 type ProductInWishlist = {
   id: string;
   title: string;
@@ -39,23 +39,10 @@ type ProductInWishlist = {
   slug: string;
   stockAvailabillity: number;
 };
-
 interface OtherImages {
   imageID: number;
   productID: number;
   image: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
-}
-
-interface User {
-  id: string;
-  email: string;
-  password: string | null;
-  role: string;
 }
 
 interface Order {
@@ -75,26 +62,20 @@ interface Order {
   orderNotice: string?;
   total: number;
 }
-
 interface SingleProductBtnProps {
   product: Product;
   quantityCount: number;
 }
-
-
 interface Category {
   id: string;
   name: string;
 }
-
 interface WishListItem {
   id: string;
   userId: string;
   productId: string;
   product: Product;
 }
-
-
 declare module "next-auth" {
 
   interface User {

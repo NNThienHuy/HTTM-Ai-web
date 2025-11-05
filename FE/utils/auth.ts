@@ -3,6 +3,8 @@ import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials"; 
 import config from "@/lib/config";
 
+const LARAVEL_API_LOGIN_URL = `${config.apiBaseUrl}/api/auth/login`; 
+
 interface LaravelUser {
   id: number;
   name: string;
@@ -37,7 +39,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const loginResponse = await fetch(`${config.apiBaseUrl}/api/auth/login`, {
+          const loginResponse = await fetch(LARAVEL_API_LOGIN_URL, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -49,11 +51,10 @@ export const authOptions: NextAuthOptions = {
             }),
           });
 
-          const data = await loginResponse.json();
+          const data: LaravelLoginResponse = await loginResponse.json();
 
           if (!loginResponse.ok) {
             console.error("Laravel login failed:", loginResponse.status, data.message);
-
             throw new Error(data.message || "Email hoặc mật khẩu không đúng");
           }
 
@@ -64,11 +65,10 @@ export const authOptions: NextAuthOptions = {
               name: user.name,
               email: user.email,
               role: user.role ?? "user",
-              accessToken: data.access_token
+              accessToken: data.access_token, 
             };
           } else {
-            console.error("Laravel login response missing user or token:", data);
-            return null;
+            return null; 
           }
 
         } catch (error: any) {
@@ -101,6 +101,7 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
+    
     async session({ session, token }) {
       if (token) {
         if (session.user) {
