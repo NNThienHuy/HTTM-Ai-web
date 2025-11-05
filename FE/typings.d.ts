@@ -96,23 +96,18 @@ interface WishListItem {
 
 
 declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      name: string;
-      email: string;
-      image: string;
-      role: string;
-    };
-    accessToken?: string;
-  }
 
   interface User {
     id: string;
+    name?: string;
+    email?: string;
     role: string;
     accessToken?: string;
-    name?: string;   
-    email?: string;
+  }
+
+  interface Session {
+    user: User; 
+    accessToken?: string; 
   }
 }
 
@@ -121,7 +116,7 @@ declare module "next-auth/jwt" {
     id: string;
     role: string;
     accessToken?: string;
-    name?: string;     
+    name?: string;
     email?: string;
   }
 }
