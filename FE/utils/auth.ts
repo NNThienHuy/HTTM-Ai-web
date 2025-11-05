@@ -1,5 +1,4 @@
 import { NextAuthOptions, User } from "next-auth";
-import { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 const LARAVEL_API_LOGIN_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/api/auth/login`;
@@ -14,26 +13,7 @@ interface LaravelUser {
 interface LaravelLoginResponse {
   user: LaravelUser;
   token: string;
-  message?: string; 
-}
-
-declare module "next-auth" {
-  interface User {
-    id: string;
-    role?: string;
-    accessToken?: string;
-  }
-  interface Session {
-    user: User;
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    role?: string;
-    accessToken?: string;
-  }
+  message?: string;
 }
 
 export const authOptions: NextAuthOptions = {
@@ -54,7 +34,6 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Gọi API login của Laravel BE
           const res = await fetch(LARAVEL_API_LOGIN_URL, {
             method: "POST",
             headers: {
@@ -80,7 +59,7 @@ export const authOptions: NextAuthOptions = {
               email: responseData.user.email,
               role: responseData.user.role,
               accessToken: responseData.token,
-            };
+            } as User; 
           } else {
             return null;
           }

@@ -1,11 +1,19 @@
 import NextAuth from "next-auth/next";
-import type { User, Session, Account, Profile, NextAuthOptions } from "next-auth";
+import type { User, Session, Profile, NextAuthOptions } from "next-auth";
+import type { Account } from "@auth/core/types";
 import { JWT } from "next-auth/jwt"; 
-import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { nanoid } from "nanoid";
 import config from "@/lib/config";
+
+type Provider = {
+  id: string;
+  name: string;
+  type: string;
+  credentials?: Record<string, any>;
+  authorize?: (credentials: Record<string, any>, req: any) => Promise<any>;
+};
 
 export const authOptions: NextAuthOptions = { 
   session: {
@@ -126,4 +134,17 @@ export const authOptions: NextAuthOptions = {
 
 const handler = NextAuth(authOptions);
 
-export { handler as GET, handler as POST };
+function CredentialsProvider(options: {
+  name: string;
+  credentials: Record<string, { label: string; type: string; placeholder?: string }>;
+  authorize: (credentials: Record<string, any>, req: any) => Promise<any>;
+}): Provider {
+  return {
+    id: "credentials",
+    name: options.name,
+    type: "credentials",
+    credentials: options.credentials,
+    authorize: options.authorize,
+  } as Provider;
+}
+
