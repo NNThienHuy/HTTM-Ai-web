@@ -11,7 +11,6 @@ import {
 import React from "react";
 import { sanitize } from "@/lib/sanitize";
 
-// improve readabillity of category text, for example category text "smart-watches" will be "smart watches"
 const improveCategoryText = (text: string): string => {
   if (text.indexOf("-") !== -1) {
     let textArray = text.split("-");
@@ -23,7 +22,6 @@ const improveCategoryText = (text: string): string => {
 };
 
 const ShopPage = async ({ params, searchParams }: { params: Promise<{ slug?: string[] }>, searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) => {
-  // Await both params and searchParams
   const awaitedParams = await params;
   const awaitedSearchParams = await searchParams;
   
