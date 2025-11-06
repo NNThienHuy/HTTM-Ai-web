@@ -37,9 +37,9 @@ Route::post('/forgot-password', [PasswordResetController::class, 'forgot']);
 Route::post('/reset-password', [PasswordResetController::class, 'reset']);
 // ===============================================
 // == 3. CÁC ROUTE CÔNG KHAI (PUBLIC)
-// ===============================================
-Route::get('/products', [ProductController::class, 'index']);
-Route::get('/products/{product}', [ProductController::class, 'show']);
+// // ===============================================
+// Route::get('/products', [ProductController::class, 'index']);
+// Route::get('/products/{product}', [ProductController::class, 'show']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{category}', [CategoryController::class, 'show']);
 Route::get('/brands', [BrandController::class, 'index']);
@@ -56,6 +56,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/{product}', [ProductController::class, 'show']);
     Route::get('/cart', [CartController::class, 'show']);
     Route::post('/cart/items', [CartController::class, 'addItem']);
     Route::put('/cart/items/{cartItem}', [CartController::class, 'updateItem']);
