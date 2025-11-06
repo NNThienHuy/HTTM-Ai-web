@@ -10,7 +10,6 @@ export function sanitizeFormData(formData: any): any {
 
   const sanitized = { ...formData };
 
-  // Sanitize text fields
   if (sanitized.title) sanitized.title = sanitize(sanitized.title);
   if (sanitized.manufacturer) sanitized.manufacturer = sanitize(sanitized.manufacturer);
   if (sanitized.description) sanitized.description = sanitize(sanitized.description);

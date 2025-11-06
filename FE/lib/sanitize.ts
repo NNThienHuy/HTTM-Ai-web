@@ -7,8 +7,7 @@ import DOMPurify from 'dompurify';
  */
 export function sanitize(text: string | null | undefined): string {
   if (!text) return '';
-  
-  // For client-side, use DOMPurify with strict settings
+
   if (typeof window !== 'undefined') {
     return DOMPurify.sanitize(text, { 
       ALLOWED_TAGS: [],
@@ -19,7 +18,6 @@ export function sanitize(text: string | null | undefined): string {
     });
   }
   
-  // For server-side, use comprehensive escaping
   return text
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -39,7 +37,6 @@ export function sanitize(text: string | null | undefined): string {
 export function sanitizeHtml(text: string | null | undefined): string {
   if (!text) return '';
   
-  // For client-side, use DOMPurify with limited allowed tags
   if (typeof window !== 'undefined') {
     return DOMPurify.sanitize(text, {
       ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'b', 'i'],
@@ -50,6 +47,5 @@ export function sanitizeHtml(text: string | null | undefined): string {
     });
   }
   
-  // For server-side, strip all HTML tags
   return text.replace(/<[^>]*>/g, '');
 }

@@ -30,7 +30,6 @@ export const useNotifications = () => {
     setUnreadCount
   } = useNotificationStore();
 
-  // Get current user ID
   const getCurrentUserId = useCallback(async () => {
     if (!session?.user?.email) return null;
     
@@ -44,7 +43,6 @@ export const useNotifications = () => {
     }
   }, [session?.user?.email]);
 
-  // Fetch notifications
   const fetchNotifications = useCallback(async (customFilters?: NotificationFilters) => {
     const userId = await getCurrentUserId();
     if (!userId) return;
@@ -63,7 +61,6 @@ export const useNotifications = () => {
     }
   }, [filters, getCurrentUserId, setNotifications, setLoading, setError]);
 
-  // Fetch unread count only
   const fetchUnreadCount = useCallback(async () => {
     const userId = await getCurrentUserId();
     if (!userId) return;
@@ -76,7 +73,6 @@ export const useNotifications = () => {
     }
   }, [getCurrentUserId, setUnreadCount]);
 
-  // Mark single notification as read
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     try {
       await notificationApi.updateNotification(notificationId, true);
@@ -88,10 +84,9 @@ export const useNotifications = () => {
     }
   }, [markAsRead]);
 
-  // Mark multiple notifications as read
   const markSelectedAsRead = useCallback(async () => {
     const userId = await getCurrentUserId();
-    const idsToMarkRead = [...selectedIds]; // Create snapshot
+    const idsToMarkRead = [...selectedIds]; 
     
     if (!userId || idsToMarkRead.length === 0) return;
 
@@ -103,8 +98,7 @@ export const useNotifications = () => {
       
       idsToMarkRead.forEach(id => markAsRead(id));
       clearSelection();
-      
-      // Refresh unread count
+
       await fetchUnreadCount();
       
       toast.success(`${idsToMarkRead.length} notifications marked as read`);
@@ -114,7 +108,6 @@ export const useNotifications = () => {
     }
   }, [selectedIds, getCurrentUserId, markAsRead, clearSelection, fetchUnreadCount]);
 
-  // Delete single notification
   const deleteNotificationById = useCallback(async (notificationId: string) => {
     const userId = await getCurrentUserId();
     if (!userId) return;
@@ -129,10 +122,9 @@ export const useNotifications = () => {
     }
   }, [getCurrentUserId, deleteNotification]);
 
-  // Delete selected notifications
   const deleteSelectedNotifications = useCallback(async () => {
     const userId = await getCurrentUserId();
-    const idsToDelete = [...selectedIds]; // Create snapshot
+    const idsToDelete = [...selectedIds]; 
     
     if (!userId || idsToDelete.length === 0) {
       return;
@@ -143,12 +135,10 @@ export const useNotifications = () => {
         notificationIds: idsToDelete,
         userId
       });
-      
-      // Update local state - remove deleted notifications
+
       idsToDelete.forEach(id => deleteNotification(id));
       clearSelection();
-      
-      // Refresh data to ensure consistency
+
       await fetchNotifications();
       
       toast.success(`${idsToDelete.length} notifications deleted`);
@@ -158,14 +148,12 @@ export const useNotifications = () => {
     }
   }, [selectedIds, getCurrentUserId, deleteNotification, clearSelection, fetchNotifications]);
 
-  // Update filters and refetch
   const updateFilters = useCallback((newFilters: Partial<NotificationFilters>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
     fetchNotifications(updatedFilters);
   }, [filters, setFilters, fetchNotifications]);
 
-  // Load more notifications (pagination)
   const loadMore = useCallback(() => {
     if (page < totalPages) {
       updateFilters({ page: page + 1 });
@@ -173,7 +161,6 @@ export const useNotifications = () => {
   }, [page, totalPages, updateFilters]);
 
   return {
-    // Data
     notifications,
     unreadCount,
     total,
@@ -184,8 +171,7 @@ export const useNotifications = () => {
     filters,
     selectedIds,
     hasMore: page < totalPages,
-    
-    // Actions
+
     fetchNotifications,
     fetchUnreadCount,
     markNotificationAsRead,
@@ -194,15 +180,13 @@ export const useNotifications = () => {
     deleteSelectedNotifications,
     updateFilters,
     loadMore,
-    
-    // Store actions (direct access)
     setFilters,
     clearSelection
   };
 };
 
 /**
- * Hook for real-time unread count (for header badge)
+ * Hook for real-time unread 
  */
 export const useUnreadCount = () => {
   const { unreadCount, setUnreadCount } = useNotificationStore();
@@ -212,7 +196,6 @@ export const useUnreadCount = () => {
     if (!session?.user?.email) return;
 
     try {
-      // Get user ID first
       const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/users/email/${session.user.email}`);
       const userData = await userResponse.json();
       
@@ -225,15 +208,13 @@ export const useUnreadCount = () => {
     }
   }, [session?.user?.email, setUnreadCount]);
 
-  // Auto-refresh unread count every 30 seconds
   useEffect(() => {
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000); // 30 seconds
-    
-    // Listen for order completed events to refresh immediately
+    const interval = setInterval(fetchUnreadCount, 30000); 
+
     const handleOrderCompleted = () => {
       console.log('Order completed - refreshing notifications');
-      setTimeout(fetchUnreadCount, 1000); // Slight delay to ensure notification is created
+      setTimeout(fetchUnreadCount, 1000); 
     };
     
     window.addEventListener('orderCompleted', handleOrderCompleted);

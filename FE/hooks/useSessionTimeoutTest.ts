@@ -3,7 +3,6 @@
 import { useSession, signOut } from "next-auth/react";
 import { useEffect, useRef } from "react";
 
-// Use 30 seconds for testing
 const SESSION_TIMEOUT = 30 * 1000; // 30 seconds for testing
 
 export function useSessionTimeoutTest() {
@@ -11,7 +10,6 @@ export function useSessionTimeoutTest() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    // Only run on client side
     if (typeof window === 'undefined') return;
     
     if (status === "authenticated" && session) {
