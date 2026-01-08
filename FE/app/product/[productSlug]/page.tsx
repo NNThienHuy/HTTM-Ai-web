@@ -1,45 +1,54 @@
 import {
   StockAvailabillity,
-  UrgencyText,
   SingleProductRating,
   ProductTabs,
   SingleProductDynamicFields,
   AddToWishlistBtn,
 } from "@/components";
-import apiClient from "@/lib/api";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import React from "react";
-import { FaSquareFacebook } from "react-icons/fa6";
-import { FaSquareXTwitter } from "react-icons/fa6";
-import { FaSquarePinterest } from "react-icons/fa6";
+import { FaSquareFacebook, FaSquareXTwitter, FaSquarePinterest } from "react-icons/fa6";
 import { sanitize } from "@/lib/sanitize";
+import config from "@/lib/config";
 
-interface ImageItem {
-  imageID: string;
-  productID: string;
-  image: string;
+const buildImgSrc = (src?: string) => {
+  if (!src) return "/product_placeholder.jpg";
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  return `/${src.replace(/^\/+/, "")}`;
+};
+
+async function fetchProductBySlug(slug: string) {
+  // ✅ dùng index + search để lấy list, rồi tìm slug trùng
+  const url = `${config.apiBaseUrl}/api/products?search=${encodeURIComponent(slug)}&per_page=50`;
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) return null;
+
+  const json = await res.json().catch(() => null);
+
+  // Laravel: { success: true, products: { data: [...] } }
+  const list = Array.isArray(json?.products?.data) ? json.products.data : [];
+  const product = list.find((p: any) => p?.slug === slug) ?? null;
+  return product;
 }
 
-interface SingleProductPageProps {
-  params: Promise<{  productSlug: string, id: string }>;
-}
+export default async function SingleProductPage({
+  params,
+}: {
+  params: { productSlug: string };
+}) {
+  const product = await fetchProductBySlug(params.productSlug);
+  if (!product) notFound();
 
-const SingleProductPage = async ({ params }: SingleProductPageProps) => {
-  const paramsAwaited = await params;
-  const data = await apiClient.get(
-    `/api/slugs/${paramsAwaited?.productSlug}`
-  );
-  const product = await data.json();
-  
-  const imagesData = await apiClient.get(
-    `/api/images/${paramsAwaited?.id}`
-  );
-  const images = await imagesData.json();
-
-  if (!product || product.error) {
-    notFound();
-  }
+  // map nhanh cho UI bạn đang dùng
+  const uiProduct = {
+    ...product,
+    title: product.name ?? product.title ?? "",
+    mainImage: product.mainImage ?? product.main_image ?? product.image ?? "",
+    inStock: product.inStock ?? product.stock_quantity ?? 0,
+    manufacturer: product.manufacturer ?? product.brand?.name ?? "",
+    rating: product.rating ?? 0,
+  };
 
   return (
     <div className="bg-white">
@@ -47,36 +56,24 @@ const SingleProductPage = async ({ params }: SingleProductPageProps) => {
         <div className="flex justify-center gap-x-16 pt-10 max-lg:flex-col items-center gap-y-5 px-5">
           <div>
             <Image
-              src={product?.mainImage ? `/${product?.mainImage}` : "/product_placeholder.jpg"}
+              src={buildImgSrc(uiProduct.mainImage)}
               width={500}
               height={500}
               alt="main image"
               className="w-auto h-auto"
             />
-            <div className="flex justify-around mt-5 flex-wrap gap-y-1 max-[500px]:justify-center max-[500px]:gap-x-1">
-              {images?.map((imageItem: ImageItem, key: number) => (
-                <Image
-                  key={imageItem.imageID + key}
-                  src={`/${imageItem.image}`}
-                  width={100}
-                  height={100}
-                  alt="laptop image"
-                  className="w-auto h-auto"
-                />
-              ))}
-            </div>
           </div>
+
           <div className="flex flex-col gap-y-7 text-black max-[500px]:text-center">
-            <SingleProductRating rating={product?.rating} />
-            <h1 className="text-3xl">{sanitize(product?.title)}</h1>
-            <p className="text-xl font-semibold">${product?.price}</p>
-            <StockAvailabillity stock={94} inStock={product?.inStock} />
-            <SingleProductDynamicFields product={product} />
+            <SingleProductRating rating={uiProduct.rating} />
+            <h1 className="text-3xl">{sanitize(uiProduct.title)}</h1>
+            <p className="text-xl font-semibold">${uiProduct.price}</p>
+            <StockAvailabillity stock={94} inStock={uiProduct.inStock} />
+            <SingleProductDynamicFields product={uiProduct} />
+
             <div className="flex flex-col gap-y-2 max-[500px]:items-center">
-              <AddToWishlistBtn product={product} slug={paramsAwaited.productSlug} />
-              <p className="text-lg">
-                SKU: <span className="ml-1">abccd-18</span>
-              </p>
+              <AddToWishlistBtn product={uiProduct} slug={params.productSlug} />
+
               <div className="text-lg flex gap-x-2">
                 <span>Share:</span>
                 <div className="flex items-center gap-x-1 text-2xl">
@@ -85,59 +82,14 @@ const SingleProductPage = async ({ params }: SingleProductPageProps) => {
                   <FaSquarePinterest />
                 </div>
               </div>
-              <div className="flex gap-x-2">
-                <Image
-                  src="/visa.svg"
-                  width={50}
-                  height={50}
-                  alt="visa icon"
-                  className="w-auto h-auto"
-                />
-                <Image
-                  src="/mastercard.svg"
-                  width={50}
-                  height={50}
-                  alt="mastercard icon"
-                  className="h-auto w-auto"
-                />
-                <Image
-                  src="/ae.svg"
-                  width={50}
-                  height={50}
-                  alt="americal express icon"
-                  className="h-auto w-auto"
-                />
-                <Image
-                  src="/paypal.svg"
-                  width={50}
-                  height={50}
-                  alt="paypal icon"
-                  className="w-auto h-auto"
-                />
-                <Image
-                  src="/dinersclub.svg"
-                  width={50}
-                  height={50}
-                  alt="diners club icon"
-                  className="h-auto w-auto"
-                />
-                <Image
-                  src="/discover.svg"
-                  width={50}
-                  height={50}
-                  alt="discover icon"
-                  className="h-auto w-auto"
-                />
-              </div>
             </div>
           </div>
         </div>
+
         <div className="py-16">
-          <ProductTabs product={product} />
+          <ProductTabs product={uiProduct} />
         </div>
       </div>
     </div>
   );
-};
-
-export default SingleProductPage;
+}

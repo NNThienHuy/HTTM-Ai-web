@@ -18,10 +18,11 @@ const buildImgSrc = (src?: string) => {
 
 const ProductItem = ({ product, color }: { product: Product; color: string }) => {
   const imgSrc = buildImgSrc(product.mainImage);
+  const href = `/product/${product.slug || "product"}/${product.id}`;
 
   return (
     <div className="flex flex-col items-center gap-y-2">
-      <Link href={`/product/${product.slug}`}>
+      <Link href={href}>
         <Image
           src={imgSrc}
           width={300}
@@ -32,7 +33,7 @@ const ProductItem = ({ product, color }: { product: Product; color: string }) =>
       </Link>
 
       <Link
-        href={`/product/${product.slug}`}
+        href={href}
         className={
           color === "black"
             ? "text-xl text-black font-normal mt-2 uppercase"
@@ -55,7 +56,7 @@ const ProductItem = ({ product, color }: { product: Product; color: string }) =>
       <ProductItemRating productRating={product?.rating} />
 
       <Link
-        href={`/product/${product.slug}`}
+        href={href}
         className="block flex justify-center items-center w-full uppercase bg-white px-0 py-2 text-base border border-black border-gray-300 font-bold text-blue-600 shadow-sm hover:bg-black hover:bg-gray-100 focus:outline-none focus:ring-2"
       >
         <p>Xem sản phẩm</p>
