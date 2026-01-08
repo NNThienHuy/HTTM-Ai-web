@@ -1,28 +1,46 @@
 "use client";
-import { nanoid } from "nanoid";
+
 import Image from "next/image";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import CustomButton from "./CustomButton";
 import apiClient from "@/lib/api";
 import { sanitize } from "@/lib/sanitize";
+import type { Product } from "@/lib/types"; // ✅ nhớ import đúng type
+
+const buildImgSrc = (src?: string) => {
+  if (!src) return "/product_placeholder.jpg";
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  return `/${src.replace(/^\/+/, "")}`; // ✅ tránh //...
+};
 
 const DashboardProductTable = () => {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    apiClient.get("/api/products?mode=admin", {cache: "no-store"})
-      .then((res) => {
-        return res.json();
+    apiClient
+      .get("/api/products?mode=admin", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json) => {
+        // ✅ Laravel paginate: { success: true, products: { data: [...] } }
+        const list =
+          Array.isArray(json?.products?.data) ? json.products.data :
+          Array.isArray(json?.data) ? json.data :
+          Array.isArray(json) ? json :
+          [];
+
+        setProducts(list);
       })
-      .then((data) => {
-        setProducts(data);
+      .catch((e) => {
+        console.error("Fetch admin products failed:", e);
+        setProducts([]);
       });
   }, []);
 
   return (
     <div className="w-full">
       <h1 className="text-3xl font-semibold text-center mb-5">All products</h1>
+
       <div className="flex justify-end mb-5">
         <Link href="/admin/products/new">
           <CustomButton
@@ -36,9 +54,8 @@ const DashboardProductTable = () => {
         </Link>
       </div>
 
-      <div className="xl:ml-5 w-full max-xl:mt-5 overflow-auto w-full h-[80vh]">
+      <div className="xl:ml-5 w-full max-xl:mt-5 overflow-auto h-[80vh]">
         <table className="table table-md table-pin-cols">
-          {/* head */}
           <thead>
             <tr>
               <th>
@@ -52,11 +69,11 @@ const DashboardProductTable = () => {
               <th></th>
             </tr>
           </thead>
+
           <tbody>
-            {/* row 1 */}
-            {products &&
-              products.map((product) => (
-                <tr key={nanoid()}>
+            {Array.isArray(products) &&
+              products.map((product: any) => (
+                <tr key={product?.id}>
                   <th>
                     <label>
                       <input type="checkbox" className="checkbox" />
@@ -70,42 +87,43 @@ const DashboardProductTable = () => {
                           <Image
                             width={48}
                             height={48}
-                            src={product?.mainImage ? `/${product?.mainImage}` : "/product_placeholder.jpg"}
-                            alt={sanitize(product?.title) || "Product image"}
+                            src={buildImgSrc(product?.mainImage)}
+                            alt={sanitize(product?.title ?? product?.name) || "Product image"}
                             className="w-auto h-auto"
                           />
                         </div>
                       </div>
+
                       <div>
-                        <div className="font-bold">{sanitize(product?.title)}</div>
+                        <div className="font-bold">
+                          {sanitize(product?.title ?? product?.name)}
+                        </div>
                         <div className="text-sm opacity-50">
-                          {sanitize(product?.manufacturer)}
+                          {sanitize(product?.manufacturer ?? product?.brand?.name ?? "")}
                         </div>
                       </div>
                     </div>
                   </td>
 
                   <td>
-                    { product?.inStock ? (<span className="badge badge-success text-white badge-sm">
-                      In stock
-                    </span>) : (<span className="badge badge-error text-white badge-sm">
-                      Out of stock
-                    </span>) }
-                    
+                    {product?.inStock ? (
+                      <span className="badge badge-success text-white badge-sm">In stock</span>
+                    ) : (
+                      <span className="badge badge-error text-white badge-sm">Out of stock</span>
+                    )}
                   </td>
+
                   <td>${product?.price}</td>
+
                   <th>
-                    <Link
-                      href={`/admin/products/${product.id}`}
-                      className="btn btn-ghost btn-xs"
-                    >
+                    <Link href={`/admin/products/${product?.id}`} className="btn btn-ghost btn-xs">
                       details
                     </Link>
                   </th>
                 </tr>
               ))}
           </tbody>
-          {/* foot */}
+
           <tfoot>
             <tr>
               <th></th>
