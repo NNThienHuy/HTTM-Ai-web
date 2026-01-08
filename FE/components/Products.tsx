@@ -1,9 +1,7 @@
-// File: components/Products.tsx
-
 import React from "react";
-// 1. SỬA LỖI: Import `getProducts` từ `lib/data`
+
 import { getProducts } from "@/lib/data"; 
-// 2. SỬA LỖI: Import `Product` từ file type trung tâm
+
 import { Product } from "@/lib/types"; 
 import ProductItem from "./ProductItem";
 
@@ -14,8 +12,7 @@ const Products = async ({
   params: { slug?: string[] };
   searchParams: { [key: string]: string | string[] | undefined };
 }) => {
-  
-  // 3. Giờ đây, `Product` này là type đã được import
+
   const products: Product[] = await getProducts(searchParams);
 
   return (

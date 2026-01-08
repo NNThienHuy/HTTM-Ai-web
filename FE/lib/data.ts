@@ -38,24 +38,32 @@ function isPlainStyle<T>(j: any): j is LaravelPaginatePlain<T> {
   return j && Array.isArray(j.data) && typeof j.current_page === "number";
 }
 
-function adaptProduct(p: LaravelProduct): Product {
-  const mainImage = p.images?.length ? p.images[0].url : "/product_placeholder.jpg";
-  const avgRating = p.reviews?.length
-    ? p.reviews.reduce((acc, r) => acc + r.rating, 0) / p.reviews.length
-    : 0;
+function adaptProduct(p: any): Product {
+  const mainImage =
+    p?.images?.length ? (p.images[0].url ?? p.images[0].image ?? p.images[0]) :
+    p?.mainImage ?? p?.main_image ?? p?.image ?? "/product_placeholder.jpg";
+
+  const avgRating = Array.isArray(p?.reviews) && p.reviews.length
+    ? p.reviews.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0) / p.reviews.length
+    : Number(p?.rating) || 0;
+
+  const brandId = p?.brand?.id ?? p?.brand_id ?? 0;
+  const brandName = p?.brand?.name ?? p?.manufacturer ?? "";
+
+  const categoryId = p?.category?.id ?? p?.category_id ?? 0;
 
   return {
-    id: p.id,                         
-    merchantId: String(p.brand.id),   
-    title: p.name,
-    slug: p.slug,
-    price: p.price,
+    id: p.id ?? p.product_id,
+    merchantId: String(brandId),
+    title: p.name ?? p.title ?? "",
+    slug: p.slug ?? "",
+    price: Number(p.price) || 0,
     mainImage,
     rating: avgRating,
-    inStock: p.stock_quantity,
+    inStock: Number(p.stock_quantity ?? p.inStock ?? p.stock ?? 0),
     description: p.description ?? "",
-    categoryId: p.category.id,        
-    manufacturer: p.brand.name,
+    categoryId,
+    manufacturer: brandName,
   };
 }
 
@@ -78,9 +86,9 @@ export async function getProducts(
     if (!res.ok) throw new Error(`Failed to fetch products: ${res.status} ${res.statusText}`);
     const json = await res.json();
 
-    const list: LaravelProduct[] = isResourceStyle<LaravelProduct>(json)
-      ? json.data
-      : isPlainStyle<LaravelProduct>(json)
+    const list: LaravelProduct[] = Array.isArray(json?.products?.data)
+      ? json.products.data
+      : Array.isArray(json?.data) 
       ? json.data
       : Array.isArray(json)
       ? json
@@ -97,8 +105,15 @@ export async function getCategories(): Promise<Category[]> {
   try {
     const res = await fetch(`${API_BASE_URL}/api/categories`, { cache: "no-store" });
     if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status} ${res.statusText}`);
-    const data = (await res.json()) as Category[]; 
-    return data;
+    const json = await res.json();
+
+    const list: Category[] = Array.isArray(json?.categories)
+      ? json.categories
+      : Array.isArray(json)
+      ? json
+      : [];
+
+    return list;
   } catch (e) {
     console.error("Error fetching categories:", e);
     return [];
