@@ -7,9 +7,14 @@ import Image from "next/image";
 import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
+interface Category {
+  id: string;
+  name: string;
+}
+
 const AddNewProduct = () => {
+  // 1. Xóa merchantId khỏi state
   const [product, setProduct] = useState<{
-    merchantId?: string;
     title: string;
     price: number;
     manufacturer: string;
@@ -19,7 +24,6 @@ const AddNewProduct = () => {
     slug: string;
     categoryId: string;
   }>({
-    merchantId: "",
     title: "",
     price: 0,
     manufacturer: "",
@@ -29,11 +33,12 @@ const AddNewProduct = () => {
     slug: "",
     categoryId: "",
   });
+  
   const [categories, setCategories] = useState<Category[]>([]);
-  const [merchants, setMerchants] = useState<Merchant[]>([]);
+
   const addProduct = async () => {
+    // 2. Xóa kiểm tra merchantId
     if (
-      !product.merchantId ||
       product.title === "" ||
       product.manufacturer === "" ||
       product.description == "" ||
@@ -44,12 +49,9 @@ const AddNewProduct = () => {
     }
 
     try {
-      // Sanitize form data before sending to API
       const sanitizedProduct = sanitizeFormData(product);
-
       console.log("Sending product data:", sanitizedProduct);
 
-      // Correct usage of apiClient.post
       const response = await apiClient.post(`/api/products`, sanitizedProduct);
 
       if (response.status === 201) {
@@ -57,7 +59,6 @@ const AddNewProduct = () => {
         console.log("Product created successfully:", data);
         toast.success("Product added successfully");
         setProduct({
-          merchantId: "",
           title: "",
           price: 0,
           manufacturer: "",
@@ -75,20 +76,6 @@ const AddNewProduct = () => {
     } catch (error) {
       console.error("Error adding product:", error);
       toast.error("Network error. Please try again.");
-    }
-  };
-
-  const fetchMerchants = async () => {
-    try {
-      const res = await apiClient.get("/api/merchants");
-      const data: Merchant[] = await res.json();
-      setMerchants(data || []);
-      setProduct((prev) => ({
-      ...prev,
-        merchantId: prev.merchantId || data?.[0]?.id || "",
-      }));
-    } catch (e) {
-      toast.error("Failed to load merchants");
     }
   };
 
@@ -119,23 +106,16 @@ const AddNewProduct = () => {
       })
       .then((data) => {
         setCategories(data);
-        setProduct({
-          merchantId: product.merchantId || "",
-          title: "",
-          price: 0,
-          manufacturer: "",
-          inStock: 1,
-          mainImage: "",
-          description: "",
-          slug: "",
-          categoryId: data[0]?.id,
-        });
+        // Set default category
+        setProduct((prev) => ({
+          ...prev,
+          categoryId: data[0]?.id || "",
+        }));
       });
   };
 
   useEffect(() => {
     fetchCategories();
-    fetchMerchants();
   }, []);
 
   return (
@@ -143,31 +123,8 @@ const AddNewProduct = () => {
       <DashboardSidebar />
       <div className="flex flex-col gap-y-7 xl:ml-5 max-xl:px-5 w-full">
         <h1 className="text-3xl font-semibold">Add new product</h1>
-        <div>
-          <label className="form-control w-full max-w-xs">
-            <div className="label">
-              <span className="label-text">Merchant Info:</span>
-            </div>
-            <select
-              className="select select-bordered"
-              value={product?.merchantId}
-              onChange={(e) =>
-                setProduct({ ...product, merchantId: e.target.value })
-              }
-            >
-              {merchants.map((merchant) => (
-                <option key={merchant.id} value={merchant.id}>
-                  {merchant.name}
-                </option>
-              ))}
-            </select>
-            {merchants.length === 0 && (
-              <span className="text-xs text-red-500 mt-1">
-                Please create a merchant first.
-              </span>
-            )}
-          </label>
-        </div>
+        
+        {/* 3. Đã xóa khối div chọn Merchant ở đây */}
 
         <div>
           <label className="form-control w-full max-w-xs">

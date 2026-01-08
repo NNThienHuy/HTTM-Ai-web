@@ -3,70 +3,91 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Account; // Sửa từ User thành Account
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
     // Lấy danh sách người dùng
     public function index(Request $request)
     {
-        $users = User::orderBy('name', 'asc')->paginate(20);
-        return response()->json($users);
+       // FE mong đợi: id, email, role. Account có account_id, email, user_type
+        $accounts = Account::all()->map(function($acc) {
+            return [
+                'id' => $acc->account_id,
+                'email' => $acc->email,
+                'role' => $acc->user_type, // FE dùng 'role', BE dùng 'user_type'
+                'name' => $acc->username
+            ];
+        });
+        return response()->json($accounts);
     }
 
     public function store(Request $request)
-    {
-        $data = $request->validate([
-            'name'     => 'required|string|max:255',
-            'email'    => 'required|string|email|max:255|unique:users',
-            'password' => ['required', Password::min(8)],
-            'role'     => 'required|in:admin,customer',
+    {// FE gửi: email, password, role
+        $validated = $request->validate([
+            'email' => 'required|email|unique:accounts',
+            'password' => 'required|min:8',
+            'role' => 'required'
         ]);
 
-        $data['password'] = Hash::make($data['password']);
-        $user = User::create($data);
+        $account = Account::create([
+            'username' => explode('@', $validated['email'])[0], // Tự tạo username từ email
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'user_type' => $validated['role'] == 'admin' ? 'admin' : 'customer',
+            'status' => 'active'
+        ]);
 
-        return response()->json($user, 201);
+        // Nếu là customer, tạo thêm bản ghi customer
+        if ($account->user_type === 'customer') {
+            Customer::create(['account_id' => $account->account_id, 'full_name' => $account->username]);
+        }
+
+        return response()->json($account, 201);
     }
 
     // Xem chi tiết người dùng
-    public function show(User $user)
+    public function show($id)
     {
-        return response()->json($user);
+        $account = Account::find($id);
+        if(!$account) return response()->json(['message' => 'Not found'], 404);
+
+        return response()->json([
+            'id' => $account->account_id,
+            'email' => $account->email,
+            'role' => $account->user_type,
+        ]);
     }
 
     // Cập nhật người dùng
-    public function update(Request $request, User $user)
+   public function update(Request $request, $id)
     {
-        $data = $request->validate([
-            'name'     => 'sometimes|required|string|max:255',
-            'email'    => 'sometimes|required|string|email|max:255|unique:users,email,' . $user->id,
-            'role'     => 'sometimes|required|in:admin,customer',
-            'password' => ['nullable', Password::min(8)],
-        ]);
+        $account = Account::find($id);
+        if(!$account) return response()->json(['message' => 'Not found'], 404);
 
-        if (array_key_exists('password', $data) && $data['password']) {
-            $data['password'] = Hash::make($data['password']);
-        } else {
-            unset($data['password']); // tránh set null
+        $data = $request->all();
+        
+        if (!empty($data['password'])) {
+            $account->password = Hash::make($data['password']);
+        }
+        if (!empty($data['role'])) {
+            $account->user_type = $data['role'];
+        }
+        if (!empty($data['email'])) {
+            $account->email = $data['email'];
         }
 
-        $user->update($data);
-        return response()->json($user);
+        $account->save();
+        return response()->json($account);
     }
 
     // Xóa người dùng
-    public function destroy(Request $request, User $user)
+    public function destroy($id)
     {
-        // Ngăn admin tự xóa chính mình
-        if ($request->user()->id === $user->id) {
-            return response()->json(['message' => 'Bạn không thể tự xóa chính mình.'], 403);
-        }
-
-        $user->delete();
-        return response()->json(['message' => 'Xóa người dùng thành công.'], 200);
+        Account::destroy($id); // Hoặc logic xóa mềm
+        return response()->json(null, 204);
     }
 }

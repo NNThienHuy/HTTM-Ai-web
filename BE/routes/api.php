@@ -75,12 +75,17 @@ Route::middleware(['auth:sanctum', 'isadmin'])->group(function () {
     
     // 5. Orders (Quản lý đơn hàng bởi Admin)
     // Frontend gọi GET /api/order-product/{id} để lấy item
-    Route::get('/admin/orders', [AdminOrderController::class, 'index']); // FE gọi /api/orders hay /api/admin/orders? Check lại FE.
-    // FE admin/orders/page.tsx gọi <AdminOrders /> -> có thể nó gọi route khác. 
-    // Tuy nhiên FE admin/orders/[id] gọi /api/orders/{id}
-    Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
-    Route::put('/orders/{order}', [AdminOrderController::class, 'update']);
-    Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
+Route::get('/admin/orders', [AdminOrderController::class, 'index']); 
+    // Detail order (Thêm /admin)
+    Route::get('/admin/orders/{order}', [AdminOrderController::class, 'show']);
+    // Update order
+    Route::put('/admin/orders/{order}', [AdminOrderController::class, 'update']);
+    // Delete order
+    Route::delete('/admin/orders/{order}', [AdminOrderController::class, 'destroy']);
+    
+    // Route lấy sản phẩm trong đơn (Thêm /admin)
+    Route::get('/admin/order-product/{orderId}', [AdminOrderController::class, 'getOrderProducts']);
+    Route::delete('/admin/order-product/{orderId}', [AdminOrderController::class, 'deleteOrderProducts']);
     
     // Route đặc biệt FE gọi để lấy sản phẩm trong đơn
     Route::get('/order-product/{orderId}', [AdminOrderController::class, 'getOrderProducts']);

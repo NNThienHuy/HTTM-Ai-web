@@ -71,7 +71,7 @@ const AdminSingleOrder = () => {
   useEffect(() => {
     const fetchOrderData = async () => {
       const response = await apiClient.get(
-        `/api/orders/${params?.id}`
+        `/api/admin/orders/${params?.id}`
       );
       const data: Order = await response.json();
       setOrder(data);
@@ -79,7 +79,7 @@ const AdminSingleOrder = () => {
 
     const fetchOrderProducts = async () => {
       const response = await apiClient.get(
-        `/api/order-product/${params?.id}`
+        `/api/admin/order-product/${params?.id}`
       );
       const data: OrderProduct[] = await response.json();
       setOrderProducts(data);
@@ -117,7 +117,7 @@ const AdminSingleOrder = () => {
         return;
       }
 
-      apiClient.put(`/api/orders/${order?.id}`, {
+      apiClient.put(`/api/admin/orders/${order?.id}`, {
         method: "PUT", // or 'PUT'
         headers: {
           "Content-Type": "application/json",
@@ -145,11 +145,11 @@ const AdminSingleOrder = () => {
     };
 
     apiClient.delete(
-      `/api/order-product/${order?.id}`,
+      `/api/admin/order-product/${order?.id}`,
       requestOptions
     ).then((response) => {
       apiClient.delete(
-        `/api/orders/${order?.id}`,
+        `/api/admin/orders/${order?.id}`,
         requestOptions
       ).then((response) => {
         toast.success("Order deleted successfully");
