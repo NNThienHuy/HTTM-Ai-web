@@ -13,7 +13,12 @@ class Account extends Authenticatable
     protected $primaryKey = 'account_id';
     public $incrementing = true;        // ✅ SỬA
     protected $keyType = 'int';         // ✅ SỬA
-
+    protected $appends = ['id']; // Thêm trường 'id' vào JSON response
+    
+    public function getIdAttribute()
+    {
+        return $this->account_id; // Map id = account_id
+    }
     protected $fillable = [
         'username',
         'password',

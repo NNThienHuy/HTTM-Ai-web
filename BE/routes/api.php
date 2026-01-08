@@ -4,49 +4,89 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
-use App\Http\Controllers\ProductController;
-use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ProductController; // Public Product Controller
+use App\Http\Controllers\OrderController;   // Public/User Order Controller
 use App\Http\Controllers\RecommendationController;
+// Admin Controllers
 use App\Http\Controllers\Api\Admin\CategoryController;
-// --- Nhóm các Route CÔNG KHAI (Public Routes) ---
+use App\Http\Controllers\Api\Admin\UserController;
+use App\Http\Controllers\Api\Admin\MerchantController;
+use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
+use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
+use App\Http\Controllers\Api\Admin\ImageController;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
+
+// --- Public Routes ---
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-//  Lấy danh sách sản phẩm (có lọc, tìm kiếm, phân trang)
+// Public Product Routes
 Route::get('/products', [ProductController::class, 'index']);
-
-//  Xem chi tiết 1 sản phẩm
 Route::get('/products/{productId}', [ProductController::class, 'show']);
-// Lấy danh sách các danh mục máy tính
 Route::get('/product-categories', [ProductController::class, 'getCategories']);
 
-// --- Nhóm các Route YÊU CẦU ĐĂNG NHẬP (Protected Routes) ---
+// --- Protected Routes (Logged in users) ---
 Route::middleware('auth:sanctum')->group(function () {
-    // Lấy thông tin chi tiết của người dùng đang đăng nhập
     Route::get('/user', [AuthController::class, 'user']);
-    // Đăng xuất và hủy Token hiện tại
     Route::post('/logout', [AuthController::class, 'logout']);
-    // Lấy thông tin giỏ hàng hiện tại
+    
+    // Cart & Order for Customer
     Route::get('/cart', [CartController::class, 'getCart']);
-    // Cập nhật số lượng của một item trong giỏ (Dùng ID của CartItem)
     Route::put('/cart/items/{cartItemId}', [CartController::class, 'updateItem']);
-    // Xóa một sản phẩm khỏi giỏ
     Route::delete('/cart/items/{cartItemId}', [CartController::class, 'removeItem']);
-    // Xóa sạch giỏ hàng
     Route::post('/cart/clear', [CartController::class, 'clearCart']);
-    // Đặt hàng & Lịch sử
+    
+    // Customer Orders
     Route::get('/orders', [OrderController::class, 'index']);
-    Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'store']);
+    Route::get('/orders/{order}', [OrderController::class, 'show']);
+    
     Route::get('/recommendations/personalized', [RecommendationController::class, 'getPersonalized']);
 });
-// --- Nhóm các Route chỉ dành cho ADMIN ---
-Route::middleware(['auth:sanctum', 'isadmin'])->prefix('admin')->group(function () {
+
+// --- ADMIN ROUTES ---
+// Lưu ý: Frontend đang gọi /api/users, /api/merchants... nên ta bỏ prefix 'admin' 
+// hoặc bạn phải sửa FE base URL. Ở đây tôi map theo FE hiện tại.
+Route::middleware(['auth:sanctum', 'isadmin'])->group(function () {
     
-    // Quản lý danh mục (Category)
-    Route::get('/categories', [CategoryController::class, 'index']);     // Lấy danh sách
-    Route::post('/categories', [CategoryController::class, 'store']);    // Tạo mới
-    Route::get('/categories/{category}', [CategoryController::class, 'show']); // Chi tiết
-    Route::put('/categories/{category}', [CategoryController::class, 'update']); // Cập nhật
-    Route::delete('/categories/{category}', [CategoryController::class, 'destroy']); // Xóa
+    // Dashboard Stats (nếu cần)
+    // Route::get('/admin/stats', [DashboardController::class, 'index']);
+
+    // 1. Users (Frontend gọi /api/users)
+    Route::apiResource('users', UserController::class);
+
+    // 2. Merchants (Frontend gọi /api/merchants) - Bổ sung mới
+    Route::apiResource('merchants', MerchantController::class);
+
+    // 3. Categories (Frontend gọi /api/categories)
+    Route::apiResource('categories', CategoryController::class);
+
+    // 4. Products (Quản lý sản phẩm bởi Admin)
+    // Frontend gọi POST /api/products, PUT /api/products/{id}
+    // Cần alias tên route hoặc controller để tránh trùng với public
+    Route::post('/products', [AdminProductController::class, 'store']);
+    Route::put('/products/{id}', [AdminProductController::class, 'update']);
+    Route::delete('/products/{id}', [AdminProductController::class, 'destroy']);
+    
+    // 5. Orders (Quản lý đơn hàng bởi Admin)
+    // Frontend gọi GET /api/order-product/{id} để lấy item
+    Route::get('/admin/orders', [AdminOrderController::class, 'index']); // FE gọi /api/orders hay /api/admin/orders? Check lại FE.
+    // FE admin/orders/page.tsx gọi <AdminOrders /> -> có thể nó gọi route khác. 
+    // Tuy nhiên FE admin/orders/[id] gọi /api/orders/{id}
+    Route::get('/orders/{order}', [AdminOrderController::class, 'show']);
+    Route::put('/orders/{order}', [AdminOrderController::class, 'update']);
+    Route::delete('/orders/{order}', [AdminOrderController::class, 'destroy']);
+    
+    // Route đặc biệt FE gọi để lấy sản phẩm trong đơn
+    Route::get('/order-product/{orderId}', [AdminOrderController::class, 'getOrderProducts']);
+    Route::delete('/order-product/{orderId}', [AdminOrderController::class, 'deleteOrderProducts']);
+
+    // 6. Image Upload (Frontend gọi /api/main-image)
+    Route::post('/main-image', [ImageController::class, 'uploadMainImage']);
+    Route::get('/images/{productId}', [ImageController::class, 'getProductImages']);
 });
