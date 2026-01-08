@@ -28,12 +28,7 @@ const DashboardSidebar = () => {
         </div>
       </Link>
 
-      <Link href="/admin/categories">
-        <div className="flex gap-x-2 w-full hover:bg-blue-600 cursor-pointer items-center py-6 pl-5 text-xl text-white">
-          <MdCategory className="text-2xl" />
-          <span className="font-normal">Categories</span>
-        </div>
-      </Link>
+    
 
       <Link href="/admin/users">
         <div className="flex gap-x-2 w-full hover:bg-blue-600 cursor-pointer items-center py-6 pl-5 text-xl text-white">
