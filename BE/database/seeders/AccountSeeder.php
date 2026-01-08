@@ -13,7 +13,7 @@ class AccountSeeder extends Seeder
             \App\Models\Account::create([
                 'username' => "user$i",
                 'email' => "user$i@gmail.com",
-                'password' => bcrypt('123456'),
+                'password' => bcrypt('12345678'),
                 'user_type' => 'customer'
             ]);
         }

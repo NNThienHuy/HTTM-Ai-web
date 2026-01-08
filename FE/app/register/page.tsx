@@ -29,6 +29,7 @@ const RegisterPage = () => {
   const ho = String(form.get("name") || "").trim();        // input "Họ"
   const ten = String(form.get("lastname") || "").trim();    // input "Tên"
   const email = String(form.get("email") || "").trim();
+  const username = String(form.get("username") || "").trim();
   const password = String(form.get("password") || "");
   const confirmPassword = String(form.get("confirmpassword") || "");
   const accepted = (e.currentTarget as any)["remember-me"]?.checked === true;
@@ -38,11 +39,15 @@ const RegisterPage = () => {
   if (!password || password.length < 8) return toast.error("Password is invalid");
   if (confirmPassword !== password) return toast.error("Passwords are not equal");
   if (!accepted) return toast.error("Bạn phải chấp nhận điều khoản");
+  if (!username) return toast.error("Username là bắt buộc");
+  if (!/^[a-zA-Z0-9_]{3,20}$/.test(username))
+  return toast.error("Username chỉ gồm chữ/số/_ và 3-20 ký tự");
 
   // --- Laravel ---
   const payload = {
     name: `${ho} ${ten}`.trim(),
     email,
+    username,
     password,
     password_confirmation: confirmPassword, 
     terms: accepted,                        
@@ -155,6 +160,29 @@ const RegisterPage = () => {
                   />
                 </div>
               </div>
+
+              <div>
+              <label
+    htmlFor="username"
+    className="block text-sm font-medium leading-6 text-gray-900"
+  >
+    Username
+  </label>
+  <div className="mt-2">
+    <input
+      id="username"
+      name="username"
+      type="text"
+      required
+      autoComplete="username"
+      placeholder="vd: hoang_123"
+      className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+    />
+  </div>
+  <p className="mt-1 text-xs text-gray-500">
+    3–20 ký tự, chỉ chữ/số và dấu gạch dưới (_)
+  </p>
+</div>
 
               <div>
                 <label
