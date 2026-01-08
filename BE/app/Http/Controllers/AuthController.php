@@ -7,12 +7,15 @@ use App\Models\Customer;
 use App\Models\Cart;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB; // <-- QUAN TRỌNG: Phải import thư viện này
+use Illuminate\Support\Facades\Log; // <-- Để ghi log lỗi nếu cần kiểm tra
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
     public function register(Request $request)
     {
+        // 1. Validate dữ liệu
         $validated = $request->validate([
             'username' => 'required|string|max:50|unique:accounts',
             'email' => 'required|email|max:100|unique:accounts',
@@ -21,33 +24,60 @@ class AuthController extends Controller
             'full_name' => 'required|string|max:100'
         ]);
 
-        $account = Account::create([
-            'username' => $validated['username'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'phone' => $validated['phone'] ?? null,
-            'user_type' => 'customer',
-            'status' => 'active'
-        ]);
+        // 2. Sử dụng Transaction để đảm bảo an toàn dữ liệu
+        try {
+            $result = DB::transaction(function () use ($validated) {
+                // BƯỚC A: Tạo Account
+                $account = Account::create([
+                    'username' => $validated['username'],
+                    'email' => $validated['email'],
+                    'password' => Hash::make($validated['password']),
+                    'phone' => $validated['phone'] ?? null,
+                    'user_type' => 'customer',
+                    'status' => 'active'
+                ]);
 
-        $customer = Customer::create([
-            'account_id' => $account->account_id,
-            'full_name' => $validated['full_name']
-        ]);
+                // BƯỚC B: Tạo Customer (Map với Account)
+                // Lưu ý: Đảm bảo model Account của bạn dùng khóa chính là 'account_id'
+                // Nếu khóa chính là 'id', hãy sửa $account->account_id thành $account->id
+                $customer = Customer::create([
+                    'account_id' => $account->account_id, 
+                    'full_name' => $validated['full_name']
+                ]);
 
-        Cart::create([
-            'customer_id' => $customer->customer_id,
-            'total_amount' => 0
-        ]);
+                // BƯỚC C: Tạo Cart (Map với Customer)
+                Cart::create([
+                    'customer_id' => $customer->customer_id,
+                    'total_amount' => 0
+                ]);
 
-        $token = $account->createToken('auth_token')->plainTextToken;
+                // BƯỚC D: Tạo Token
+                $token = $account->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Registration successful',
-            'token' => $token,
-            'user' => $account->load('customer')
-        ], 201);
+                // Trả về dữ liệu cần thiết để transaction hoàn tất
+                return [
+                    'token' => $token,
+                    'user' => $account->load('customer')
+                ];
+            });
+
+            // 3. Trả về response thành công (chỉ chạy khi Transaction không lỗi)
+            return response()->json([
+                'success' => true,
+                'message' => 'Registration successful',
+                'token' => $result['token'],
+                'user' => $result['user']
+            ], 201);
+
+        } catch (\Exception $e) {
+            // 4. Xử lý lỗi: Ghi log và báo lỗi cho Client
+            Log::error('Register Error: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Registration failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function login(Request $request)

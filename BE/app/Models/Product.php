@@ -12,7 +12,13 @@ class Product extends Model
     protected $primaryKey = 'product_id';
     public $incrementing = true;        // ✅ SỬA
     protected $keyType = 'int';         // ✅ SỬA
+    protected $appends = ['title']; // Tự động thêm field 'title' vào JSON
 
+// Tạo Accessor để map 'name' sang 'title'
+    public function getTitleAttribute()
+    {
+        return $this->attributes['name'];
+    }
     protected $fillable = [
         'name',
         'description',
