@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProductController;
-use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\OrderController;
 use App\Http\Controllers\RecommendationController;
 // --- Nhóm các Route CÔNG KHAI (Public Routes) ---
 Route::post('/register', [AuthController::class, 'register']);
