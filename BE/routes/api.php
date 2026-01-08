@@ -61,7 +61,6 @@ Route::middleware(['auth:sanctum', 'isadmin'])->group(function () {
     Route::apiResource('users', UserController::class);
 
     // 2. Merchants (Frontend gọi /api/merchants) - Bổ sung mới
-    Route::apiResource('merchants', MerchantController::class);
 
     // 3. Categories (Frontend gọi /api/categories)
     Route::apiResource('categories', CategoryController::class);

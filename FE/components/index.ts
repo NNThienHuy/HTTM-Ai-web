@@ -11,6 +11,7 @@ export { default as Newsletter } from "./Newsletter";
 export { default as Footer } from "./Footer";
 export { default as Filters } from "./Filters";
 export { default as Checkbox } from "./Checkbox";
+export { default as RecommendedSection } from "./RecommendedSection";
 export { default as Range } from "./Range";
 export { default as RangeWithLabels } from "./RangeWithLabels";
 export { default as Breadcrumb } from "./Breadcrumb";
