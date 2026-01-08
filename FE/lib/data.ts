@@ -82,9 +82,19 @@ export async function getProducts(
 ): Promise<Product[]> {
   try {
     const url = `${API_BASE_URL}/api/products${toQuery(searchParams)}`;
-    const res = await fetch(url, { cache: "no-store" });
+    const res = await fetch(url, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+    });
+    
     if (!res.ok) throw new Error(`Failed to fetch products: ${res.status} ${res.statusText}`);
-    const json = await res.json();
+    const text = await res.text();
+    let json: any;
+    try {
+      json = JSON.parse(text);
+      } catch {
+    throw new Error(`API trả về không phải JSON. Status=${res.status}. Body=${text.slice(0,200)}`);
+}
 
     const list: LaravelProduct[] = Array.isArray(json?.products?.data)
       ? json.products.data
