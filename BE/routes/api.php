@@ -7,7 +7,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\RecommendationController;
-
+use App\Http\Controllers\Api\Admin\CategoryController;
 // --- Nhóm các Route CÔNG KHAI (Public Routes) ---
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -39,4 +39,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/orders/{order}', [OrderController::class, 'show']);
     Route::post('/orders', [OrderController::class, 'store']);
     Route::get('/recommendations/personalized', [RecommendationController::class, 'getPersonalized']);
+});
+// --- Nhóm các Route chỉ dành cho ADMIN ---
+Route::middleware(['auth:sanctum', 'isadmin'])->prefix('admin')->group(function () {
+    
+    // Quản lý danh mục (Category)
+    Route::get('/categories', [CategoryController::class, 'index']);     // Lấy danh sách
+    Route::post('/categories', [CategoryController::class, 'store']);    // Tạo mới
+    Route::get('/categories/{category}', [CategoryController::class, 'show']); // Chi tiết
+    Route::put('/categories/{category}', [CategoryController::class, 'update']); // Cập nhật
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy']); // Xóa
 });
