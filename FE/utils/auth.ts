@@ -62,10 +62,15 @@ export const authOptions: NextAuthOptions = {
             const user = data.user;
             return {
               id: user.id.toString(),
-              name: user.name,
+              name:
+                  (user as any)?.customer?.full_name ??
+                  (user as any)?.name ??
+                  (user as any)?.username ??
+              user.email,
               email: user.email,
-              role: user.role ?? "user",
+              role: (user as any).user_type ?? "customer",
               accessToken: data.token, 
+              
             };
           } else {
             return null; 

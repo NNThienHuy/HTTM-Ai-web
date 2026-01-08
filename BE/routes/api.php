@@ -7,15 +7,19 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\RecommendationController;
+
 // --- Nhóm các Route CÔNG KHAI (Public Routes) ---
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+
 //  Lấy danh sách sản phẩm (có lọc, tìm kiếm, phân trang)
 Route::get('/products', [ProductController::class, 'index']);
+
 //  Xem chi tiết 1 sản phẩm
 Route::get('/products/{productId}', [ProductController::class, 'show']);
 // Lấy danh sách các danh mục máy tính
 Route::get('/product-categories', [ProductController::class, 'getCategories']);
+
 // --- Nhóm các Route YÊU CẦU ĐĂNG NHẬP (Protected Routes) ---
 Route::middleware('auth:sanctum')->group(function () {
     // Lấy thông tin chi tiết của người dùng đang đăng nhập
