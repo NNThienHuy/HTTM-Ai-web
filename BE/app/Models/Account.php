@@ -11,14 +11,25 @@ class Account extends Authenticatable
     use HasApiTokens, Notifiable;
 
     protected $primaryKey = 'account_id';
-    public $incrementing = true;        // ✅ SỬA
-    protected $keyType = 'int';         // ✅ SỬA
-    protected $appends = ['id']; // Thêm trường 'id' vào JSON response
+    public $incrementing = true;
+    protected $keyType = 'int';
+    
+    // 1. THÊM 'role' VÀO MẢNG APPENDS
+    // Giúp JSON trả về có cả 'id' và 'role'
+    protected $appends = ['id', 'role']; 
     
     public function getIdAttribute()
     {
-        return $this->account_id; // Map id = account_id
+        return $this->account_id; 
     }
+
+    // 2. THÊM HÀM NÀY ĐỂ TẠO CỘT 'role' GIẢ LẬP
+    // Frontend Next.js của bạn đang tìm kiếm trường 'role'
+    public function getRoleAttribute()
+    {
+        return $this->user_type; 
+    }
+
     protected $fillable = [
         'username',
         'password',
