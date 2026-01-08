@@ -2,33 +2,36 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CartItem extends Model
 {
-    use HasFactory;
-    
-     protected $fillable = [
-        'cart_id', 
-        'product_id', 
-        'quantity',
-    ];
-    public $timestamps = false;
+    protected $primaryKey = 'cart_item_id';
+    public $incrementing = true;
+    protected $keyType = 'int';
 
-    /**
-     * Lấy giỏ hàng (cart) mà món hàng này thuộc về (N-1)
-     */
-    public function cart()
+    protected $fillable = [
+        'cart_id',
+        'product_id',
+        'quantity',
+        'price',
+        'subtotal'
+    ];
+
+    protected $casts = [
+        'quantity' => 'integer',
+        'price' => 'decimal:2',
+        'subtotal' => 'decimal:2'
+    ];
+
+    public function cart(): BelongsTo
     {
-        return $this->belongsTo(Cart::class);
+        return $this->belongsTo(Cart::class, 'cart_id', 'cart_id');
     }
 
-    /**
-     * Lấy thông tin sản phẩm (product) của món hàng này (N-1)
-     */
-    public function product()
+    public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class, 'product_id', 'product_id');
     }
 }

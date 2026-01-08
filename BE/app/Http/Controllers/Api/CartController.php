@@ -1,123 +1,151 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Cart;
-use App\Models\Product;
 use App\Models\CartItem;
+use App\Models\Product;
+use App\Models\UserProductInteraction;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
-    /**
-     * Lấy hoặc tạo giỏ hàng cho user đang đăng nhập.
-     */
-    private function getOrCreateCart(Request $request)
+    public function getCart(Request $request)
     {
-        // Lấy user đang đăng nhập
-        $user = $request->user();
+        $customer = $request->user()->customer;
+        $cart = Cart::with(['items.product.laptopFeature'])
+            ->where('customer_id', $customer->customer_id)
+            ->first();
 
-        // Tìm giỏ hàng của user, nếu không có thì tạo mới
-        // firstOrCreate() = Tìm, nếu không thấy thì Tạo
-        $cart = Cart::firstOrCreate(
-            ['user_id' => $user->id]
-        );
+        if (!$cart) {
+            $cart = Cart::create([
+                'customer_id' => $customer->customer_id,
+                'total_amount' => 0
+            ]);
+        }
 
-        return $cart;
+        return response()->json([
+            'success' => true,
+            'cart' => $cart
+        ]);
     }
 
-    /**
-     * Lấy chi tiết giỏ hàng của user.
-     * Tương ứng với route: GET /api/cart
-     */
-    public function show(Request $request)
-    {
-        $cart = $this->getOrCreateCart($request);
-        
-        // Tải thông tin các món hàng (items) và chi tiết sản phẩm (product)
-        $cart->load('items.product');
-
-        return response()->json($cart);
-    }
-
-    /**
-     * Thêm sản phẩm vào giỏ hàng.
-     * Tương ứng với route: POST /api/cart/items
-     */
     public function addItem(Request $request)
     {
-        // 1. Validate dữ liệu
-        $data = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'quantity' => 'required|integer|min:1',
+        $validated = $request->validate([
+            'product_id' => 'required|exists:products,product_id',
+            'quantity' => 'required|integer|min:1'
         ]);
 
-        $cart = $this->getOrCreateCart($request);
-        $productId = $data['product_id'];
-        $quantity = $data['quantity'];
+        $customer = $request->user()->customer;
+        $cart = Cart::firstOrCreate(
+            ['customer_id' => $customer->customer_id],
+            ['total_amount' => 0]
+        );
 
-        // 2. Kiểm tra xem sản phẩm đã có trong giỏ hàng chưa
-        $cartItem = $cart->items()->where('product_id', $productId)->first();
+        $product = Product::findOrFail($validated['product_id']);
+
+        if ($product->stock_quantity < $validated['quantity']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not enough stock available'
+            ], 400);
+        }
+
+        $cartItem = CartItem::where('cart_id', $cart->cart_id)
+            ->where('product_id', $validated['product_id'])
+            ->first();
 
         if ($cartItem) {
-            // Nếu đã có, cộng dồn số lượng
-            $cartItem->quantity += $quantity;
+            $cartItem->quantity += $validated['quantity'];
+            $cartItem->subtotal = $cartItem->quantity * $cartItem->price;
             $cartItem->save();
         } else {
-            // Nếu chưa có, tạo mới
-            $cartItem = new CartItem([
-                'product_id' => $productId,
-                'quantity' => $quantity,
+            CartItem::create([
+                'cart_id' => $cart->cart_id,
+                'product_id' => $validated['product_id'],
+                'quantity' => $validated['quantity'],
+                'price' => $product->price,
+                'subtotal' => $product->price * $validated['quantity']
             ]);
-            $cart->items()->save($cartItem);
         }
-        
-        // Trả về giỏ hàng đã cập nhật
-        $cart->load('items.product');
-        return response()->json($cart);
-    }
 
-    /**
-     * Cập nhật số lượng của một món hàng trong giỏ.
-     */
-    public function updateItem(Request $request, CartItem $cartItem)
-    {
-        // 1. Validate
-        $data = $request->validate([
-            'quantity' => 'required|integer|min:1',
+        // Record interaction - XÓA Str::uuid()
+        UserProductInteraction::create([
+            'customer_id' => $customer->customer_id,
+            'product_id' => $validated['product_id'],
+            'interaction_type' => 'cart',
+            'interaction_value' => 2.0
         ]);
 
-        // 2. Kiểm tra quyền: Món hàng này có thuộc giỏ hàng của user không?
-        $cart = $this->getOrCreateCart($request);
-        if ($cartItem->cart_id !== $cart->id) {
-            return response()->json(['message' => 'Không có quyền truy cập.'], 403); // 403 = Forbidden
-        }
+        $cart->calculateTotal();
 
-        // 3. Cập nhật số lượng
-        $cartItem->quantity = $data['quantity'];
-        $cartItem->save();
-
-        $cart->load('items.product');
-        return response()->json($cart);
+        return response()->json([
+            'success' => true,
+            'message' => 'Item added to cart',
+            'cart' => $cart->load('items.product')
+        ]);
     }
 
-    /**
-     * Xóa một món hàng khỏi giỏ hàng.
-     */
-    public function removeItem(Request $request, CartItem $cartItem)
+    public function updateItem(Request $request, string $cartItemId)
     {
-        // 1. Kiểm tra quyền
-        $cart = $this->getOrCreateCart($request);
-        if ($cartItem->cart_id !== $cart->id) {
-            return response()->json(['message' => 'Không có quyền truy cập.'], 403);
+        $validated = $request->validate([
+            'quantity' => 'required|integer|min:1'
+        ]);
+
+        $cartItem = CartItem::findOrFail($cartItemId);
+        $product = $cartItem->product;
+
+        if ($product->stock_quantity < $validated['quantity']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Not enough stock available'
+            ], 400);
         }
 
-        // 2. Xóa
-        $cartItem->delete();
+        $cartItem->quantity = $validated['quantity'];
+        $cartItem->subtotal = $cartItem->quantity * $cartItem->price;
+        $cartItem->save();
+
+        $cartItem->cart->calculateTotal();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cart updated',
+            'cart' => $cartItem->cart->load('items.product')
+        ]);
+    }
+
+    public function removeItem(Request $request, string $cartItemId)
+    {
+        $cartItem = CartItem::findOrFail($cartItemId);
+        $cart = $cartItem->cart;
         
-        $cart->load('items.product');
-        return response()->json($cart);
+        $cartItem->delete();
+        $cart->calculateTotal();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Item removed',
+            'cart' => $cart->load('items.product')
+        ]);
+    }
+
+    public function clearCart(Request $request)
+    {
+        $customer = $request->user()->customer;
+        $cart = Cart::where('customer_id', $customer->customer_id)->first();
+
+        if ($cart) {
+            $cart->items()->delete();
+            $cart->total_amount = 0;
+            $cart->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cart cleared',
+            'cart' => $cart
+        ]);
     }
 }

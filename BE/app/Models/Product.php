@@ -2,143 +2,82 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
-    use HasFactory;
+    protected $primaryKey = 'product_id';
+    public $incrementing = true;        // ✅ SỬA
+    protected $keyType = 'int';         // ✅ SỬA
 
-    /**
-     * Nếu table là 'products' thì không cần khai báo $table.
-     * protected $table = 'products';
-     */
-
-    // Các field cho phép gán hàng loạt (mass assignment)
     protected $fillable = [
         'name',
-        'slug',
-        'category_id',
-        'brand_id',
-        'price',
-        'sale_price',
-        'stock_quantity',
         'description',
-        'status',
-        // thêm các cột khác của bảng products nếu bạn có:
-        // 'short_description',
-        // 'thumbnail_url',
-        // ...
+        'price',
+        'category_id',
+        'image_url',
+        'stock_quantity',
+        'rating',
+        'views'
     ];
 
-    // Ép kiểu cho đúng (rất hữu ích khi trả JSON)
     protected $casts = [
-        'price'          => 'float',
-        'sale_price'     => 'float',
-        'stock_quantity' => 'integer',
+        'price' => 'decimal:2',
+        'rating' => 'decimal:2',
+        'views' => 'integer',
+        'stock_quantity' => 'integer'
     ];
 
-    // Tự động append mấy field computed ra JSON (nếu muốn)
-    protected $appends = [
-        'final_price',
-        'avg_rating',
-        'rating_count',
-    ];
-
-    // ==========================================
-    // == RELATIONSHIPS
-    // ==========================================
-
-    /**
-     * Một Product thuộc về một Category (N-1)
-     */
-    public function category()
+    public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(ProductCategory::class, 'category_id', 'category_id');
     }
 
-    /**
-     * Một Product thuộc về một Brand (N-1)
-     */
-    public function brand()
+    public function laptopFeature(): HasOne
     {
-        return $this->belongsTo(Brand::class);
+        return $this->hasOne(LaptopFeature::class, 'product_id', 'product_id');
     }
 
-    /**
-     * Một Product có nhiều Reviews (1-N)
-     */
-    public function reviews()
+    public function reviews(): HasMany
     {
-        return $this->hasMany(Review::class);
+        return $this->hasMany(ProductReview::class, 'product_id', 'product_id');
     }
 
-    /**
-     * Một Product có nhiều Images (1-N)
-     */
-    public function images()
+    public function cartItems(): HasMany
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(CartItem::class, 'product_id', 'product_id');
     }
 
-    /**
-     * Một Product có nhiều Specifications (1-N)
-     */
-    public function specifications()
+    public function orderItems(): HasMany
     {
-        return $this->hasMany(ProductSpecification::class);
+        return $this->hasMany(OrderItem::class, 'product_id', 'product_id');
     }
 
-    /**
-     * Quan hệ đến bảng product_features (cho hệ KNN).
-     * Một sản phẩm có MỘT record features tương ứng.
-     */
-    public function feature()
+    public function inventoryItems(): HasMany
     {
-        return $this->hasOne(ProductFeature::class);
-        // nhớ tạo model ProductFeature tương ứng với bảng product_features
+        return $this->hasMany(InventoryItem::class, 'product_id', 'product_id');
     }
 
-    // ==========================================
-    // == ACCESSORS / COMPUTED ATTRIBUTES
-    // ==========================================
-
-    /**
-     * Giá cuối cùng hiển thị cho user (ưu tiên sale_price nếu có).
-     */
-    public function getFinalPriceAttribute(): float
+    public function interactions(): HasMany
     {
-        // Nếu không có sale_price thì dùng price
-        $sale = $this->sale_price ?? 0;
-        return $sale > 0 ? $sale : (float) $this->price;
+        return $this->hasMany(UserProductInteraction::class, 'product_id', 'product_id');
     }
 
-    /**
-     * Rating trung bình (dựa trên quan hệ reviews).
-     * Nếu bạn đã save avg_rating trong bảng products thì có thể dùng trực tiếp.
-     */
-    public function getAvgRatingAttribute(): ?float
+    public function incrementViews(): void
     {
-        // Nếu đã eager load 'reviews' thì sẽ không query lại
-        if ($this->relationLoaded('reviews')) {
-            $avg = $this->reviews->avg('rating');
-            return $avg ? round($avg, 2) : null;
-        }
-
-        // Không eager load thì query riêng
-        $avg = $this->reviews()->avg('rating');
-        return $avg ? round($avg, 2) : null;
+        $this->increment('views');
     }
 
-    /**
-     * Số lượng đánh giá.
-     */
-    public function getRatingCountAttribute(): int
+    public function isInStock(): bool
     {
-        if ($this->relationLoaded('reviews')) {
-            return $this->reviews->count();
-        }
+        return $this->stock_quantity > 0;
+    }
 
-        return (int) $this->reviews()->count();
+    public function getFormattedPriceAttribute(): string
+    {
+        return number_format($this->price, 0, ',', '.') . ' VNĐ';
     }
 }

@@ -1,93 +1,103 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Account;
+use App\Models\Customer;
+use App\Models\Cart;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /**
-     * Xử lý yêu cầu đăng ký tài khoản mới.
-     * Tương ứng với route: POST /api/register
-     */
     public function register(Request $request)
     {
-        // 1. Validate dữ liệu đầu vào
-        $data = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => ['required', 'confirmed', Password::min(8)],
-            // 'password_confirmation' phải được gửi kèm
+        $validated = $request->validate([
+            'username' => 'required|string|max:50|unique:accounts',
+            'email' => 'required|email|max:100|unique:accounts',
+            'password' => 'required|string|min:8|confirmed',
+            'phone' => 'nullable|string|max:20',
+            'full_name' => 'required|string|max:100'
         ]);
 
-        // 2. Tạo User mới
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => Hash::make($data['password']),
-            'role' => 'customer',
+        $account = Account::create([
+            'username' => $validated['username'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+            'phone' => $validated['phone'] ?? null,
+            'user_type' => 'customer',
+            'status' => 'active'
         ]);
 
-        // 3. Tạo token API cho user
-        $token = $user->createToken('api-token-c' . $user->id)->plainTextToken;
+        $customer = Customer::create([
+            'account_id' => $account->account_id,
+            'full_name' => $validated['full_name']
+        ]);
 
-        // 4. Trả về thông tin user và token
+        Cart::create([
+            'customer_id' => $customer->customer_id,
+            'total_amount' => 0
+        ]);
+
+        $token = $account->createToken('auth_token')->plainTextToken;
+
         return response()->json([
-            'user' => $user,
+            'success' => true,
+            'message' => 'Registration successful',
             'token' => $token,
+            'user' => $account->load('customer')
         ], 201);
     }
 
-    /**
-     * Xử lý yêu cầu đăng nhập.
-     * Tương ứng với route: POST /api/login
-     */
     public function login(Request $request)
     {
-        // 1. Validate dữ liệu
-        $credentials = $request->validate([
+        $validated = $request->validate([
             'email' => 'required|email',
-            'password' => 'required',
+            'password' => 'required|string'
         ]);
 
-        // 2. Thử đăng nhập
-        if (!Auth::attempt($credentials)) {
-            return response()->json([
-                'message' => 'Email hoặc mật khẩu không chính xác.'
-            ], 401);
+        $account = Account::where('email', $validated['email'])->first();
+
+        if (!$account || !Hash::check($validated['password'], $account->password)) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.']
+            ]);
         }
 
-        // 3. Đăng nhập thành công, lấy thông tin user
-        $user = $request->user();
+        if ($account->status !== 'active') {
+            throw ValidationException::withMessages([
+                'email' => ['Your account has been disabled.']
+            ]);
+        }
 
-        // 4. Tạo token mới
-        // (Xóa token cũ nếu bạn muốn user chỉ đăng nhập 1 nơi 1 lúc)
-        // $user->tokens()->delete(); 
-        $token = $user->createToken('api-token-' . $user->id)->plainTextToken;
+        $account->update(['last_login' => now()]);
 
-        // 5. Trả về thông tin user và token
+        $token = $account->createToken('auth_token')->plainTextToken;
+
         return response()->json([
-            'user' => $user,
+            'success' => true,
+            'message' => 'Login successful',
             'token' => $token,
+            'user' => $account->load('customer')
         ]);
     }
 
-    /**
-     * Xử lý yêu cầu đăng xuất.
-     * Tương ứng với route: POST /api/logout (Phải được bảo vệ)
-     */
     public function logout(Request $request)
     {
-        // Lấy user đang đăng nhập và xóa token hiện tại
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
-            'message' => 'Đăng xuất thành công.'
+            'success' => true,
+            'message' => 'Logged out successfully'
+        ]);
+    }
+
+    public function user(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'user' => $request->user()->load('customer')
         ]);
     }
 }

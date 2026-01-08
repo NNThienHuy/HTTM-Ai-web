@@ -1,81 +1,82 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\UserProductInteraction;
 use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-
     public function index(Request $request)
     {
-        $query = Product::query()
-            ->with(['category', 'brand', 'images', 'reviews'])
-            ->where('status', 'active')
-            ->where('stock_quantity', '>', 0);
+        $query = Product::with(['category', 'laptopFeature']);
 
-        if ($search = $request->query('q')) {
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+        if ($request->has('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        if ($request->has('min_price')) {
+            $query->where('price', '>=', $request->min_price);
+        }
+        if ($request->has('max_price')) {
+            $query->where('price', '<=', $request->max_price);
+        }
+
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('description', 'LIKE', "%{$search}%");
             });
         }
-        if ($categoryId = $request->query('category_id')) {
-            $query->where('category_id', $categoryId);
-        }
 
-        if ($brandId = $request->query('brand_id')) {
-            $query->where('brand_id', $brandId);
-        }
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortOrder = $request->input('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
 
-        if ($minPrice = $request->query('min_price')) {
-            $query->where('price', '>=', $minPrice);
-        }
+        $products = $query->paginate(12);
 
-        if ($maxPrice = $request->query('max_price')) {
-            $query->where('price', '<=', $maxPrice);
-        }
-        $sort = $request->query('sort', 'newest');
-        switch ($sort) {
-            case 'price_asc':
-                $query->orderBy('price', 'asc');
-                break;
-            case 'price_desc':
-                $query->orderBy('price', 'desc');
-                break;
-            case 'newest':
-            default:
-                $query->orderBy('created_at', 'desc');
-                break;
-        }
-
-        // Phân trang (mặc định 20/sp)
-        $perPage = (int) $request->query('per_page', 20);
-
-        $products = $query->paginate($perPage);
-
-        return response()->json($products);
+        return response()->json([
+            'success' => true,
+            'products' => $products
+        ]);
     }
 
-    public function show(Product $product)
+    public function show(Request $request, string $productId)
     {
-        if ($product->status !== 'active' || $product->stock_quantity <= 0) {
-            return response()->json([
-                'message' => 'Product not found',
-            ], 404);
+        $product = Product::with(['category', 'laptopFeature', 'reviews.customer'])
+            ->findOrFail($productId);
+
+        $product->incrementViews();
+
+        // Record interaction - XÓA Str::uuid()
+        if ($request->user()) {
+            $customer = $request->user()->customer;
+            if ($customer) {
+                UserProductInteraction::create([
+                    'customer_id' => $customer->customer_id,
+                    'product_id' => $productId,
+                    'interaction_type' => 'view',
+                    'interaction_value' => 1.0
+                ]);
+            }
         }
 
-        $product->load([
-            'images',
-            'reviews',
-            'specifications', 
-            'category',
-            'brand',
+        return response()->json([
+            'success' => true,
+            'product' => $product
         ]);
+    }
 
-        return response()->json($product);
+    public function getCategories()
+    {
+        $categories = ProductCategory::whereNull('parent_category_id')->get();
+
+        return response()->json([
+            'success' => true,
+            'categories' => $categories
+        ]);
     }
 }

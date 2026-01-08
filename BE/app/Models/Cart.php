@@ -2,31 +2,43 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Cart extends Model
 {
-    use HasFactory;
+    protected $primaryKey = 'cart_id';
+    public $incrementing = true;       
+    protected $keyType = 'int';         
 
     protected $fillable = [
-        'user_id', // Cần thiết cho Cart::firstOrCreate() trong Controller
-        'notes', // (Nếu bạn có cột này trong migration)
-        // ... thêm các cột khác nếu cần gán giá trị hàng loạt
+        'customer_id',
+        'total_amount'
     ];
-    /**
-     * Lấy user sở hữu giỏ hàng này (N-1)
-     */
-    public function user()
+
+    protected $casts = [
+        'total_amount' => 'decimal:2'
+    ];
+
+    public function customer(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Customer::class, 'customer_id', 'customer_id');
     }
 
-    /**
-     * Lấy tất cả các món hàng trong giỏ (1-N)
-     */
-    public function items()
+    public function items(): HasMany
     {
-        return $this->hasMany(CartItem::class);
+        return $this->hasMany(CartItem::class, 'cart_id', 'cart_id');
+    }
+
+    public function calculateTotal(): void
+    {
+        $this->total_amount = $this->items()->sum('subtotal');
+        $this->save();
+    }
+
+    public function getItemCount(): int
+    {
+        return $this->items()->sum('quantity');
     }
 }
