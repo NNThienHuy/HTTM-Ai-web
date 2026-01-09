@@ -2,115 +2,108 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Models\Order;
-use App\Models\OrderItem;
-use App\Models\Cart;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB; //1. IMPORT DB ĐỂ DÙNG TRANSACTION
-use App\Services\VnpayService; // <-- THÊM DÒNG NÀYclass OrderController extends Controller
+use Illuminate\Support\Facades\DB;
+use App\Models\Order;
+use Illuminate\Support\Facades\Log;
+
 class OrderController extends Controller
 {
+    // 1. Lấy danh sách đơn hàng
     public function index(Request $request)
     {
-        // LỖI 1: Trong hệ thống của bạn, Order liên kết với Customer, không phải User trực tiếp
-        $customer = $request->user()->customer;
-
-        if (!$customer) {
-            return response()->json(['message' => 'Thông tin khách hàng không tồn tại.'], 404);
-        }
-
-        // LỖI 2: Đổi 'user_id' thành 'customer_id' để khớp với database
-        $orders = Order::where('customer_id', $customer->customer_id)
-                        ->orderBy('created_at', 'desc')
-                        ->paginate(15);
-
+        $user = $request->user();
+        
+        // --- SỬA LẠI: Không dùng account_id nếu bảng không có ---
+        // Thử tìm theo customer_email trước vì nó chắc chắn tồn tại trong bảng orders
+        $orders = Order::where('customer_email', $user->email)
+                       ->orderBy('created_at', 'desc')
+                       ->get();
+                       
         return response()->json($orders);
     }
 
-    public function show(Request $request, Order $order)
+    // 2. Tạo đơn hàng mới
+public function store(Request $request)
     {
-        $customer = $request->user()->customer;
-
-        // LỖI 3: Kiểm tra quyền sở hữu dựa trên customer_id
-        if ($order->customer_id !== $customer->customer_id) {
-            return response()->json(['message' => 'Không có quyền truy cập.'], 403);
-        }
-
-        $order->load('items.product');
-
-        return response()->json($order);
-    }
-
-    public function store(Request $request, VnpayService $vnpayService)
-    {
-        $user = $request->user();
-        $customer = $user->customer;
-
-        if (!$customer) {
-            return response()->json(['message' => 'Bạn cần cập nhật thông tin khách hàng trước.'], 400);
-        }
-
-        $data = $request->validate([
-            'customer_name' => 'required|string|max:255',
-            'customer_email' => 'required|email|max:255',
-            'customer_phone' => 'required|string|max:20',
-            'shipping_address' => 'required|string',
-            'payment_method' => 'required|string|in:COD,VNPAY',
-        ]);
-
-        // LỖI 4: Truy vấn giỏ hàng qua customer_id
-        $cart = Cart::with('items.product')->where('customer_id', $customer->customer_id)->first();
-        
-        if (!$cart || $cart->items->isEmpty()) {
-            return response()->json(['message' => 'Giỏ hàng của bạn đang rỗng.'], 400); 
-        }
-
-        $totalAmount = 0;
-        foreach ($cart->items as $item) {
-            // LỖI 5: Đảm bảo lấy giá đúng tên cột 'price' của bảng products
-            $price = $item->product->price; 
-            $totalAmount += $price * $item->quantity;
-        }
-
-        // 4. Tạo đơn hàng (Dùng transaction bao bọc để an toàn)
-        return DB::transaction(function () use ($customer, $data, $cart, $totalAmount, $vnpayService, $request) {
-            $order = Order::create([
-                'customer_id' => $customer->customer_id, // Đổi user_id -> customer_id
-                'customer_name' => $data['customer_name'],
-                'customer_email' => $data['customer_email'],
-                'customer_phone' => $data['customer_phone'],
-                'shipping_address' => $data['shipping_address'],
-                'payment_method' => $data['payment_method'],
-                'total_amount' => $totalAmount,
-                'status' => 'pending', 
-                'payment_status' => 'pending', 
+        try {
+            // Validate dữ liệu
+            $validated = $request->validate([
+                'customer_name' => 'required|string',
+                'customer_phone' => 'required|string',
+                'customer_email' => 'required|email',
+                'shipping_address' => 'required|string',
+                'total_amount' => 'required|numeric',
+                'user_id' => 'nullable', 
+                'order_notes' => 'nullable|string',
+                // 'payment_method' => 'nullable|string' // Tạm bỏ validate này
             ]);
 
-            // Copy sang OrderItem cho cả 2 phương thức
-            foreach ($cart->items as $item) {
-                OrderItem::create([
-                    'order_id' => $order->order_id, // Dùng order_id của bảng 10
-                    'product_id' => $item->product_id,
-                    'quantity' => $item->quantity,
-                    'price' => $item->product->price, 
-                ]);
-            }
+            $order = new Order();
+            
+            // 1. Gán Customer ID (Đã fix từ bước trước)
+            $order->customer_id = $request->user_id; 
+            
+            // 2. Gán thông tin người nhận
+            $order->customer_name = $request->customer_name;
+            $order->customer_phone = $request->customer_phone;
+            $order->customer_email = $request->customer_email;
+            $order->shipping_address = $request->shipping_address;
+            $order->total_amount = $request->total_amount;
+            $order->status = 'pending';
+            
+            // 3. [QUAN TRỌNG] Sửa lỗi cột ghi chú
+            // DB của bạn tên cột là 'note', nhưng Frontend gửi lên là 'order_notes'
+            $order->note = $request->order_notes; 
 
-            if ($data['payment_method'] === 'COD') {
-                $cart->items()->delete(); // Xóa giỏ ngay nếu là COD
-                $cart->update(['total_amount' => 0]);
-                
-                return response()->json($order->load('items.product'), 201);
-            }
+            // 4. [QUAN TRỌNG] Sửa lỗi Payment Method
+            // Vì DB chưa có cột 'payment_method', ta tạm thời KHÔNG lưu dòng này
+            // $order->payment_method = $request->payment_method ?? 'COD'; 
+            
+            $order->save();
 
-            // Xử lý VNPAY
-            $payment_url = $vnpayService->createPaymentUrl($order, $request);
-            if (!$payment_url) {
-                throw new \Exception('Không thể tạo URL thanh toán VnPay.');
-            }
+            return response()->json([
+                'message' => 'Order created successfully',
+                'id' => $order->order_id, 
+                'order' => $order
+            ], 201);
 
-            return response()->json(['payment_url' => $payment_url]);
-        });
+        } catch (\Exception $e) {
+            Log::error("Create Order Error: " . $e->getMessage());
+            return response()->json(['message' => 'Database Error: ' . $e->getMessage()], 500);
+        }
+    }
+    // 3. Thêm sản phẩm
+    public function addProduct(Request $request)
+    {
+        try {
+            // Bạn nên đổi tên param này từ Frontend cho thống nhất, nhưng hiện tại giữ nguyên
+            $orderId = $request->customerOrderId ?? $request->order_id;
+
+            // Kiểm tra xem bảng trong DB là 'order_details' hay 'order_items'
+            // Nếu lỗi "Table 'order_details' doesn't exist", hãy đổi tên bảng ở dưới
+            DB::table('order_details')->insert([
+                'order_id' => $orderId,
+                'product_id' => $request->product_id ?? $request->productId, // Hỗ trợ cả 2 cách gọi
+                'quantity' => $request->quantity,
+                'price' => $request->price ?? 0,
+            ]);
+
+            return response()->json(['message' => 'Product added']);
+
+        } catch (\Exception $e) {
+            Log::error("Add Product Error: " . $e->getMessage());
+            return response()->json(['message' => 'Add Product Error: ' . $e->getMessage()], 500); 
+        }
+    }
+    
+    public function show($id)
+    {
+        // Hàm này sẽ lỗi nếu Model Order chưa có function details()
+        // Nếu lỗi, tạm thời bỏ ->with('details')
+        $order = Order::with('details')->find($id); 
+        
+        if (!$order) return response()->json(['message' => 'Not found'], 404);
+        return response()->json($order);
     }
 }

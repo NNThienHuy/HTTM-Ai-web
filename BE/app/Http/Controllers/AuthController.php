@@ -130,4 +130,41 @@ class AuthController extends Controller
             'user' => $request->user()->load('customer')
         ]);
     }
+    // ... Các hàm register, login, logout, user có sẵn ở trên ...
+
+    // --- THÊM HÀM NÀY VÀO CUỐI ---
+  // Dán đè hàm này vào AuthController.php
+    public function getUserByEmail($email)
+    {
+        try {
+            // BƯỚC 1: Tìm Account (Không dùng ->with để tránh lỗi)
+            $account = Account::where('email', $email)->first();
+
+            if (!$account) {
+                return response()->json(['message' => 'Email not found'], 404);
+            }
+
+            // BƯỚC 2: Tìm Customer thủ công bằng account_id
+            // (Lưu ý: Đảm bảo bảng customers có cột account_id)
+            $customer = Customer::where('account_id', $account->account_id)->first();
+            
+            // Nếu model dùng id thì sửa thành: $account->id
+            // $customer = Customer::where('account_id', $account->id)->first();
+
+            // BƯỚC 3: Gán customer vào account để trả về đúng định dạng frontend cần
+            $account->setAttribute('customer', $customer);
+
+            return response()->json($account);
+
+        } catch (\Exception $e) {
+            // Nếu vẫn lỗi, nó sẽ hiện chi tiết lỗi ra màn hình để ta biết đường sửa
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ], 500);
+        }
+    }
+
 }

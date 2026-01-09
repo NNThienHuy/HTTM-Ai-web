@@ -62,8 +62,6 @@ const ProductItem = ({ product, color }: { product: Product; color: string }) =>
         ${Number(product.price).toLocaleString()}
       </p>
 
-      {/* 4. Đánh giá sao */}
-      <ProductItemRating productRating={product?.rating} />
 
       {/* 5. Nút Xem chi tiết */}
       <Link

@@ -27,7 +27,9 @@ return new class extends Migration
             $table->string('tracking_number', 100)->nullable();
             $table->text('note')->nullable();
             $table->timestamps();
-
+            $table->string('customer_name');
+            $table->string('customer_email');
+            $table->string('customer_phone', 20);
             $table->foreign('customer_id')
                   ->references('customer_id')
                   ->on('customers')

@@ -2,736 +2,333 @@
 import { SectionTitle } from "@/components";
 import { useProductStore } from "../_zustand/store";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import apiClient from "@/lib/api";
+import config from "@/lib/config";
+
+// --- Hàm xử lý ảnh ---
+const buildImgSrc = (src?: string) => {
+  if (!src) return "/product_placeholder.jpg";
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  
+  // Xử lý đường dẫn tương đối từ Laravel Storage
+  const cleanSrc = src.replace(/^\/+/, "");
+  const baseUrl = config.apiBaseUrl?.replace(/\/+$/, "") || "http://localhost:8000";
+  
+  if (cleanSrc.startsWith("storage") || cleanSrc.startsWith("images")) {
+      return `${baseUrl}/${cleanSrc}`;
+  }
+  return `/${cleanSrc}`;
+};
 
 const CheckoutPage = () => {
   const { data: session } = useSession();
-  const [checkoutForm, setCheckoutForm] = useState({
-    name: "",
-    lastname: "",
-    phone: "",
-    email: "",
-    company: "",
-    adress: "",
-    apartment: "",
-    city: "",
-    country: "",
-    postalCode: "",
-    orderNotice: "",
-  });
-  
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { products, total, clearCart } = useProductStore();
   const router = useRouter();
+  const { products, total, clearCart } = useProductStore();
 
+  // State
+  const [userId, setUserId] = useState<number | null>(null); // Lưu ID thực từ DB
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutForm, setCheckoutForm] = useState({
+    name: "", lastname: "", phone: "", email: "", company: "",
+    adress: "", apartment: "", city: "", country: "", postalCode: "", orderNotice: "",
+  });
+
+  // Phí ship cố định (có thể đổi logic sau này)
+  const SHIPPING_FEE = 5;
+  const FINAL_TOTAL = total + SHIPPING_FEE;
+
+  // --- 1. Tự động lấy thông tin User khi có Session ---
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (session?.user?.email) {
+        try {
+          // Gọi API mới thêm: /api/users/email/{email}
+          const res = await apiClient.get(`/api/users/email/${session.user.email}`);
+          if (res.ok) {
+            const userData = await res.json();
+            // Lưu user_id database
+            setUserId(userData.id);
+            
+            // Tự động điền form (Optional)
+            setCheckoutForm(prev => ({
+              ...prev,
+              email: userData.email || session.user?.email || "",
+              name: userData.name || session.user?.name || "",
+              // Nếu backend trả về phone hay address thì điền luôn ở đây
+            }));
+          }
+        } catch (error) {
+          console.error("Không lấy được thông tin user:", error);
+        }
+      }
+    };
+    fetchUserInfo();
+  }, [session]);
+
+  // --- 2. Validate Form ---
   const validateForm = () => {
     const errors: string[] = [];
-
-    if (!checkoutForm.name.trim() || checkoutForm.name.trim().length < 2) {
-      errors.push("Name must be at least 2 characters");
-    }
-
-    if (!checkoutForm.lastname.trim() || checkoutForm.lastname.trim().length < 2) {
-      errors.push("Lastname must be at least 2 characters");
-    }
-
-    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/;
-    if (!checkoutForm.email.trim() || !emailRegex.test(checkoutForm.email.trim())) {
-      errors.push("Please enter a valid email address");
-    }
-
-    const phoneDigits = checkoutForm.phone.replace(/[^0-9]/g, '');
-    if (!checkoutForm.phone.trim() || phoneDigits.length < 10) {
-      errors.push("Phone number must be at least 10 digits");
-    }
-
-    if (!checkoutForm.company.trim() || checkoutForm.company.trim().length < 5) {
-      errors.push("Company must be at least 5 characters");
-    }
-
-    if (!checkoutForm.adress.trim() || checkoutForm.adress.trim().length < 5) {
-      errors.push("Address must be at least 5 characters");
-    }
-
-    if (!checkoutForm.apartment.trim() || checkoutForm.apartment.trim().length < 1) {
-      errors.push("Apartment is required");
-    }
-
-    if (!checkoutForm.city.trim() || checkoutForm.city.trim().length < 5) {
-      errors.push("City must be at least 5 characters");
-    }
-
-    if (!checkoutForm.country.trim() || checkoutForm.country.trim().length < 5) {
-      errors.push("Country must be at least 5 characters");
-    }
-
-    if (!checkoutForm.postalCode.trim() || checkoutForm.postalCode.trim().length < 3) {
-      errors.push("Postal code must be at least 3 characters");
-    }
-    
+    if (!checkoutForm.name.trim() || checkoutForm.name.trim().length < 2) errors.push("Tên phải ít nhất 2 ký tự");
+    if (!checkoutForm.email.trim() || !/^\S+@\S+\.\S+$/.test(checkoutForm.email)) errors.push("Email không hợp lệ");
+    if (!checkoutForm.phone.trim() || checkoutForm.phone.length < 10) errors.push("Số điện thoại không hợp lệ");
+    if (!checkoutForm.adress.trim()) errors.push("Địa chỉ là bắt buộc");
+    if (!checkoutForm.city.trim()) errors.push("Thành phố là bắt buộc");
     return errors;
   };
 
+  // --- 3. Xử lý đặt hàng ---
   const makePurchase = async () => {
+    // Validate
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
-      validationErrors.forEach(error => {
-        toast.error(error);
-      });
+      validationErrors.forEach(err => toast.error(err));
       return;
     }
-
-    const requiredFields = [
-      'name', 'lastname', 'phone', 'email', 'company', 
-      'adress', 'apartment', 'city', 'country', 'postalCode'
-    ];
-    
-    const missingFields = requiredFields.filter(field => 
-      !checkoutForm[field as keyof typeof checkoutForm]?.trim()
-    );
-
-    if (missingFields.length > 0) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-
     if (products.length === 0) {
-      toast.error("Your cart is empty");
-      return;
-    }
-
-    if (total <= 0) {
-      toast.error("Invalid order total");
+      toast.error("Giỏ hàng đang trống");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      console.log("🚀 Starting order creation...");
-      let userId = null;
-      if (session?.user?.email) {
-        try {
-          console.log("🔍 Getting user ID for logged-in user:", session.user.email);
-          const userResponse = await apiClient.get(`/api/users/email/${session.user.email}`);
-          if (userResponse.ok) {
-            const userData = await userResponse.json();
-            userId = userData.id;
-            console.log("✅ Found user ID:", userId);
-          } else {
-            console.log("❌ Could not find user with email:", session.user.email);
-          }
-        } catch (userError) {
-          console.log("⚠️  Error getting user ID:", userError);
-        }
-      }
+      // Ghép địa chỉ đầy đủ
+      const fullShippingAddress = [
+        checkoutForm.apartment,
+        checkoutForm.adress,
+        checkoutForm.city,
+        checkoutForm.country,
+        checkoutForm.postalCode
+      ].filter(Boolean).join(", ");
 
+      // Chuẩn bị dữ liệu gửi lên
       const orderData = {
-        name: checkoutForm.name.trim(),
-        lastname: checkoutForm.lastname.trim(),
-        phone: checkoutForm.phone.trim(),
-        email: checkoutForm.email.trim().toLowerCase(),
+        customer_name: `${checkoutForm.name} ${checkoutForm.lastname}`.trim(),
+        customer_phone: checkoutForm.phone.trim(),
+        customer_email: checkoutForm.email.trim().toLowerCase(),
+        shipping_address: fullShippingAddress,
+        payment_method: "COD", 
         company: checkoutForm.company.trim(),
-        adress: checkoutForm.adress.trim(),
-        apartment: checkoutForm.apartment.trim(),
-        postalCode: checkoutForm.postalCode.trim(),
+        order_notes: checkoutForm.orderNotice.trim(), 
         status: "pending",
-        total: total,
-        city: checkoutForm.city.trim(),
-        country: checkoutForm.country.trim(),
-        orderNotice: checkoutForm.orderNotice.trim(),
-        userId: userId 
+        total_amount: FINAL_TOTAL, // Gửi tổng tiền đã cộng ship
+        user_id: userId // Gửi ID lấy được từ useEffect (hoặc null nếu khách vãng lai)
       };
 
-      console.log("📋 Order data being sent:", orderData);
+      console.log("Sending Order Data:", orderData); // Debug log
 
+      // Gửi request tạo đơn
       const response = await apiClient.post("/api/orders", orderData);
 
-      console.log("📡 API Response received:");
-      console.log("  Status:", response.status);
-      console.log("  Status Text:", response.statusText);
-      console.log("  Response OK:", response.ok);
-
       if (!response.ok) {
-        console.error("❌ Response not OK:", response.status, response.statusText);
         const errorText = await response.text();
-        console.error("Error response body:", errorText);
-
-        try {
-          const errorData = JSON.parse(errorText);
-          console.error("Parsed error data:", errorData);
-
-          if (response.status === 409) {
-           
-            toast.error(errorData.details || errorData.error || "Duplicate order detected");
-            return; 
-          } else if (errorData.details && Array.isArray(errorData.details)) {
-          
-            errorData.details.forEach((detail: any) => {
-              toast.error(`${detail.field}: ${detail.message}`);
-            });
-          } else if (typeof errorData.details === 'string') {
-            
-            toast.error(errorData.details);
-          } else {
-            
-            toast.error(errorData.error || "Order creation failed");
-          }
-        } catch (parseError) {
-          console.error("Could not parse error as JSON:", parseError);
-          toast.error("Order creation failed. Please try again.");
-        }
-        
-        return;
+        throw new Error(errorText || "Tạo đơn hàng thất bại");
       }
 
       const data = await response.json();
-      console.log("✅ Parsed response data:", data);
-      
-      const orderId: string = data.id;
-      console.log("🆔 Extracted order ID:", orderId);
+      // Lấy ID đơn hàng vừa tạo (support cả cấu trúc trả về trực tiếp hoặc bọc trong data)
+      const newOrderId = data.id || data.order?.id || data.data?.id;
 
-      if (!orderId) {
-        console.error("❌ Order ID is missing or falsy!");
-        console.error("Full response data:", JSON.stringify(data, null, 2));
-        throw new Error("Order ID not received from server");
-      }
+      if (newOrderId) {
+        // --- 4. Lưu chi tiết sản phẩm (Dùng Promise.all cho nhanh) ---
+        const orderPromises = products.map(product => 
+          apiClient.post("/api/order-product", {
+            customerOrderId: newOrderId, // ID đơn hàng
+            product_id: product.id,      // ID sản phẩm
+            quantity: product.amount,    // Số lượng
+            price: product.price         // (Optional) Gửi giá tại thời điểm mua để an toàn
+          })
+        );
 
-      console.log("✅ Order ID validation passed, proceeding with product addition...");
-
-      for (let i = 0; i < products.length; i++) {
-        console.log(`🛍️ Adding product ${i + 1}/${products.length}:`, {
-          orderId,
-          productId: products[i].id,
-          quantity: products[i].amount
+        await Promise.all(orderPromises);
+        
+        // Thành công
+        toast.success("Đặt hàng thành công!");
+        clearCart();
+        setCheckoutForm({
+            name: "", lastname: "", phone: "", email: "", company: "",
+            adress: "", apartment: "", city: "", country: "", postalCode: "", orderNotice: "",
         });
         
-        await addOrderProduct(orderId, products[i].id, products[i].amount);
-        console.log(`✅ Product ${i + 1} added successfully`);
-      }
+        // Dispatch event để update UI (ví dụ số lượng cart trên header)
+        try { window.dispatchEvent(new CustomEvent('orderCompleted')); } catch (e) {}
 
-      console.log(" All products added successfully!");
-
-      setCheckoutForm({
-        name: "",
-        lastname: "",
-        phone: "",
-        email: "",
-        company: "",
-        adress: "",
-        apartment: "",
-        city: "",
-        country: "",
-        postalCode: "",
-        orderNotice: "",
-      });
-      clearCart();
-
-      try {
-        window.dispatchEvent(new CustomEvent('orderCompleted'));
-      } catch (error) {
-        console.log('Note: Could not trigger notification refresh');
-      }
-      
-      toast.success("Order created successfully! You will be contacted for payment.");
-      setTimeout(() => {
-        router.push("/");
-      }, 1000);
-    } catch (error: any) {
-      console.error("💥 Error in makePurchase:", error);
-
-      if (error.response?.status === 400) {
-        console.log(" Handling 400 error...");
-        try {
-          const errorData = await error.response.json();
-          console.log("Error data:", errorData);
-          if (errorData.details && Array.isArray(errorData.details)) {
-            errorData.details.forEach((detail: any) => {
-              toast.error(`${detail.field}: ${detail.message}`);
-            });
-          } else {
-            toast.error(errorData.error || "Validation failed");
-          }
-        } catch (parseError) {
-          console.error("Failed to parse error response:", parseError);
-          toast.error("Validation failed");
-        }
-      } else if (error.response?.status === 409) {
-        toast.error("Duplicate order detected. Please wait before creating another order.");
+        setTimeout(() => router.push("/"), 1500);
       } else {
-        console.log("🔍 Handling generic error...");
-        toast.error("Failed to create order. Please try again.");
+        throw new Error("Không lấy được ID đơn hàng từ server");
       }
+
+    } catch (error: any) {
+      console.error("💥 Error makePurchase:", error);
+      let errorMsg = "Có lỗi xảy ra.";
+      try {
+        // Cố gắng parse lỗi JSON từ server nếu có
+        const parsed = JSON.parse(error.message);
+        if (parsed.errors) {
+            // Lấy lỗi đầu tiên trong object errors
+            const firstKey = Object.keys(parsed.errors)[0];
+            errorMsg = parsed.errors[firstKey][0];
+        } else if (parsed.message) {
+            errorMsg = parsed.message;
+        }
+      } catch (e) {
+         // Nếu không parse được thì dùng message gốc
+         if (error.message && !error.message.includes("<!DOCTYPE")) errorMsg = error.message;
+      }
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const addOrderProduct = async (
-    orderId: string,
-    productId: string,
-    productQuantity: number
-  ) => {
-    try {
-      console.log("️ Adding product to order:", {
-        customerOrderId: orderId,
-        productId,
-        quantity: productQuantity
-      });
-      
-      const response = await apiClient.post("/api/order-product", {
-        customerOrderId: orderId,
-        productId: productId,
-        quantity: productQuantity,
-      });
-
-      console.log("📡 Product order response:", response);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ Product order failed:", response.status, errorText);
-        throw new Error(`Product order failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log("✅ Product order successful:", data);
-      
-    } catch (error) {
-      console.error("💥 Error creating product order:", error);
-      throw error;
-    }
-  };
-
+  // Check giỏ hàng trống khi vào trang
   useEffect(() => {
     if (products.length === 0) {
-      toast.error("You don't have items in your cart");
+      toast.error("Giỏ hàng trống");
       router.push("/cart");
     }
-  }, []);
+  }, [products, router]);
 
   return (
     <div className="bg-white">
-      <SectionTitle title="Thanh Toán" path="Trang chủ| Giỏ hàng | Thanh Toán" />
-      
-      <div className="hidden h-full w-1/2 bg-white lg:block" aria-hidden="true" />
-      <div className="hidden h-full w-1/2 bg-gray-50 lg:block" aria-hidden="true" />
-
-      <main className="relative mx-auto grid max-w-screen-2xl grid-cols-1 gap-x-16 lg:grid-cols-2 lg:px-8 xl:gap-x-48">
-        <h1 className="sr-only">Thông tin đặt hàng</h1>
-
-        {/* Order Summary */}
-        <section
-          aria-labelledby="summary-heading"
-          className="bg-gray-50 px-4 pb-10 pt-16 sm:px-6 lg:col-start-2 lg:row-start-1 lg:bg-transparent lg:px-0 lg:pb-16"
-        >
-          <div className="mx-auto max-w-lg lg:max-w-none">
-            <h2 id="summary-heading" className="text-lg font-medium text-gray-900">
-              Đơn hàng
-            </h2>
-
-            <ul
-              role="list"
-              className="divide-y divide-gray-200 text-sm font-medium text-gray-900"
-            >
-              {products.map((product) => (
-                <li key={product?.id} className="flex items-start space-x-4 py-6">
-                  <Image
-                    src={product?.image ? `/${product?.image}` : "/product_placeholder.jpg"}
-                    alt={product?.title}
-                    width={80}
-                    height={80}
-                    className="h-20 w-20 flex-none rounded-md object-cover object-center"
-                  />
-                  <div className="flex-auto space-y-1">
-                    <h3>{product?.title}</h3>
-                    <p className="text-gray-500">x{product?.amount}</p>
-                  </div>
-                  <p className="flex-none text-base font-medium">
-                    ${product?.price}
-                  </p>
-                </li>
-              ))}
-            </ul>
-
-            <dl className="hidden space-y-6 border-t border-gray-200 pt-6 text-sm font-medium text-gray-900 lg:block">
-              <div className="flex items-center justify-between">
-                <dt className="text-gray-600">Tổng</dt>
-                <dd>${total}</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-gray-600">Phí vận chuyển</dt>
-                <dd>$5</dd>
-              </div>
-              <div className="flex items-center justify-between">
-                <dt className="text-gray-600">Phí thuế</dt>
-                <dd>${total / 5}</dd>
-              </div>
-              <div className="flex items-center justify-between border-t border-gray-200 pt-6">
-                <dt className="text-base">Tổng</dt>
-                <dd className="text-base">
-                  ${total === 0 ? 0 : Math.round(total + total / 5 + 5)}
-                </dd>
-              </div>
-            </dl>
-          </div>
-        </section>
-
-        <form className="px-4 pt-16 sm:px-6 lg:col-start-1 lg:row-start-1 lg:px-0">
-          <div className="mx-auto max-w-lg lg:max-w-none">
-            {/* Contact Information */}
-            <section aria-labelledby="contact-info-heading">
-              <h2
-                id="contact-info-heading"
-                className="text-lg font-medium text-gray-900"
-              >
-                Thông tin liên lạc
-              </h2>
-
-              <div className="mt-6">
-                <label
-                  htmlFor="name-input"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Tên * (tối thiểu 2 ký tự)
-                </label>
-                <div className="mt-1">
-                  <input
-                    value={checkoutForm.name}
-                    onChange={(e) =>
-                      setCheckoutForm({
-                        ...checkoutForm,
-                        name: e.target.value,
-                      })
-                    }
-                    type="text"
-                    id="name-input"
-                    name="name-input"
-                    autoComplete="given-name"
-                    required
-                    disabled={isSubmitting}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label
-                  htmlFor="lastname-input"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Họ * (tối thiểu 2 ký tự)
-                </label>
-                <div className="mt-1">
-                  <input
-                    value={checkoutForm.lastname}
-                    onChange={(e) =>
-                      setCheckoutForm({
-                        ...checkoutForm,
-                        lastname: e.target.value,
-                      })
-                    }
-                    type="text"
-                    id="lastname-input"
-                    name="lastname-input"
-                    autoComplete="family-name"
-                    required
-                    disabled={isSubmitting}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label
-                  htmlFor="phone-input"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Số điện thoại * (tối thiểu 10 chữ số)
-                </label>
-                <div className="mt-1">
-                  <input
-                    value={checkoutForm.phone}
-                    onChange={(e) =>
-                      setCheckoutForm({
-                        ...checkoutForm,
-                        phone: e.target.value,
-                      })
-                    }
-                    type="tel"
-                    id="phone-input"
-                    name="phone-input"
-                    autoComplete="tel"
-                    required
-                    disabled={isSubmitting}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label
-                  htmlFor="email-address"
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Địa chỉ email *
-                </label>
-                <div className="mt-1">
-                  <input
-                    value={checkoutForm.email}
-                    onChange={(e) =>
-                      setCheckoutForm({
-                        ...checkoutForm,
-                        email: e.target.value,
-                      })
-                    }
-                    type="email"
-                    id="email-address"
-                    name="email-address"
-                    autoComplete="email"
-                    required
-                    disabled={isSubmitting}
-                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-            </section>
-
-            {/* Payment Notice */}
-            <section className="mt-10">
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                <div className="flex">
-                  <div className="flex-shrink-0">
-                    <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-blue-800">
-                      Thông tin thanh toán
-                    </h3>
-                    <div className="mt-2 text-sm text-blue-700">
-                      <p>Thanh toán sẽ được xử lý sau khi xác nhận đơn hàng. Chúng tôi sẽ liên hệ với bạn để cung cấp thông tin chi tiết về thanh toán.</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            {/* Shipping Address */}
-            <section aria-labelledby="shipping-heading" className="mt-10">
-              <h2
-                id="shipping-heading"
-                className="text-lg font-medium text-gray-900"
-              >
-                Địa chỉ giao hàng
-              </h2>
-
-              <div className="mt-6 grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-3">
-                <div className="sm:col-span-3">
-                  <label
-                    htmlFor="company"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Công ty *
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      id="company"
-                      name="company"
-                      required
-                      disabled={isSubmitting}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={checkoutForm.company}
-                      onChange={(e) =>
-                        setCheckoutForm({
-                          ...checkoutForm,
-                          company: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-3">
-                  <label
-                    htmlFor="address"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Địa chỉ *
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      id="address"
-                      name="address"
-                      autoComplete="street-address"
-                      required
-                      disabled={isSubmitting}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={checkoutForm.adress}
-                      onChange={(e) =>
-                        setCheckoutForm({
-                          ...checkoutForm,
-                          adress: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-3">
-                  <label
-                    htmlFor="apartment"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Căn hộ, phòng suite, v.v. * (bắt buộc)
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      id="apartment"
-                      name="apartment"
-                      required
-                      disabled={isSubmitting}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={checkoutForm.apartment}
-                      onChange={(e) =>
-                        setCheckoutForm({
-                          ...checkoutForm,
-                          apartment: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
+      <SectionTitle title="Thanh Toán" path="Trang chủ | Thanh Toán" />
+      <main className="mx-auto grid max-w-screen-2xl grid-cols-1 gap-x-16 lg:grid-cols-2 lg:px-8 p-5">
+        
+        {/* CỘT TRÁI: FORM */}
+        <form className="pt-10">
+            <h2 className="text-lg font-medium text-gray-900 mb-6">Thông tin giao hàng</h2>
+            
+            {/* Tên & Họ */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label
-                    htmlFor="city"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Thành phố *
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      autoComplete="address-level2"
-                      required
-                      disabled={isSubmitting}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={checkoutForm.city}
-                      onChange={(e) =>
-                        setCheckoutForm({
-                          ...checkoutForm,
-                          city: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
+                    <label className="block text-sm font-medium text-gray-700">Tên *</label>
+                    <input type="text" required value={checkoutForm.name}
+                        onChange={(e) => setCheckoutForm({...checkoutForm, name: e.target.value})}
+                        className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
-
                 <div>
-                  <label
-                    htmlFor="region"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    
-                  Quốc gia *
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      id="region"
-                      name="region"
-                      autoComplete="address-level1"
-                      required
-                      disabled={isSubmitting}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={checkoutForm.country}
-                      onChange={(e) =>
-                        setCheckoutForm({
-                          ...checkoutForm,
-                          country: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
+                    <label className="block text-sm font-medium text-gray-700">Họ</label>
+                    <input type="text" value={checkoutForm.lastname}
+                        onChange={(e) => setCheckoutForm({...checkoutForm, lastname: e.target.value})}
+                        className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
                 </div>
-
-                <div>
-                  <label
-                    htmlFor="postal-code"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    
-                  Mã bưu chính *
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      type="text"
-                      id="postal-code"
-                      name="postal-code"
-                      autoComplete="postal-code"
-                      required
-                      disabled={isSubmitting}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      value={checkoutForm.postalCode}
-                      onChange={(e) =>
-                        setCheckoutForm({
-                          ...checkoutForm,
-                          postalCode: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="sm:col-span-3">
-                  <label
-                    htmlFor="order-notice"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Thông báo đặt hàng
-                  </label>
-                  <div className="mt-1">
-                    <textarea
-                      className="textarea textarea-bordered textarea-lg w-full disabled:bg-gray-100 disabled:cursor-not-allowed"
-                      id="order-notice"
-                      name="order-notice"
-                      autoComplete="order-notice"
-                      disabled={isSubmitting}
-                      value={checkoutForm.orderNotice}
-                      onChange={(e) =>
-                        setCheckoutForm({
-                          ...checkoutForm,
-                          orderNotice: e.target.value,
-                        })
-                      }
-                    ></textarea>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <div className="mt-10 border-t border-gray-200 pt-6 ml-0">
-              <button
-                type="button"
-                onClick={makePurchase}
-                disabled={isSubmitting}
-                className="w-full rounded-md border border-transparent bg-blue-500 px-20 py-2 text-lg font-medium text-white shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 focus:ring-offset-gray-50 sm:order-last disabled:bg-gray-400 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Processing Order..." : "Đặt hàng"}
-              </button>
             </div>
-          </div>
+
+            {/* Email */}
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Email *</label>
+                <input type="email" required value={checkoutForm.email}
+                    onChange={(e) => setCheckoutForm({...checkoutForm, email: e.target.value})}
+                    className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+
+            {/* Phone */}
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Số điện thoại *</label>
+                <input type="tel" required value={checkoutForm.phone}
+                    onChange={(e) => setCheckoutForm({...checkoutForm, phone: e.target.value})}
+                    className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+
+            {/* Địa chỉ */}
+            <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700">Địa chỉ (Số nhà, đường) *</label>
+                <input type="text" required value={checkoutForm.adress}
+                    onChange={(e) => setCheckoutForm({...checkoutForm, adress: e.target.value})}
+                    className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            
+            {/* Thành phố & Quốc gia */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Thành phố *</label>
+                    <input type="text" required value={checkoutForm.city}
+                        onChange={(e) => setCheckoutForm({...checkoutForm, city: e.target.value})}
+                        className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Quốc gia</label>
+                    <input type="text" value={checkoutForm.country} placeholder="Việt Nam"
+                        onChange={(e) => setCheckoutForm({...checkoutForm, country: e.target.value})}
+                        className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
+                </div>
+            </div>
+
+            {/* Ghi chú */}
+            <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700">Ghi chú đơn hàng</label>
+                <textarea rows={3} value={checkoutForm.orderNotice}
+                    onChange={(e) => setCheckoutForm({...checkoutForm, orderNotice: e.target.value})}
+                    className="mt-1 block w-full rounded-md border border-gray-300 p-2 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+
+            <button type="button" onClick={makePurchase} disabled={isSubmitting}
+                className={`w-full text-white py-3 px-4 rounded-md font-bold transition-colors ${
+                    isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+                }`}>
+                {isSubmitting ? "Đang xử lý..." : `THANH TOÁN $${FINAL_TOTAL.toLocaleString()}`}
+            </button>
         </form>
+
+        {/* CỘT PHẢI: CHI TIẾT ĐƠN HÀNG */}
+        <div className="bg-gray-50 p-6 rounded-lg mt-10 lg:mt-0 h-fit border border-gray-200">
+            <h2 className="text-lg font-medium text-gray-900 mb-4">Đơn hàng của bạn</h2>
+            <ul className="divide-y divide-gray-200">
+                {products.map((product) => {
+                    // Xử lý logic ảnh an toàn cho TypeScript
+                    const productImg = product.image || (product as any).mainImage || (product as any).main_image;
+                    
+                    return (
+                        <li key={product.id} className="flex py-4">
+                            <div className="h-16 w-16 flex-none rounded-md border border-gray-200 overflow-hidden relative bg-white">
+                                <Image 
+                                    src={buildImgSrc(productImg)} 
+                                    alt={product.title} 
+                                    fill
+                                    className="object-contain"
+                                    sizes="64px"
+                                />
+                            </div>
+                            <div className="ml-4 flex-auto">
+                                <h3 className="font-medium text-sm text-gray-900">{product.title}</h3>
+                                <p className="text-gray-500 text-sm">Số lượng: {product.amount}</p>
+                            </div>
+                            <p className="font-medium text-sm text-gray-900">${Number(product.price).toLocaleString()}</p>
+                        </li>
+                    );
+                })}
+            </ul>
+            <div className="border-t border-gray-200 pt-4 mt-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                    <dt className="text-gray-600">Tạm tính</dt>
+                    <dd className="font-medium">${total.toLocaleString()}</dd>
+                </div>
+                <div className="flex justify-between">
+                    <dt className="text-gray-600">Phí vận chuyển</dt>
+                    <dd className="font-medium">${SHIPPING_FEE}</dd>
+                </div>
+                <div className="flex justify-between font-bold text-lg border-t border-gray-200 pt-2 text-gray-900">
+                    <dt>Tổng cộng</dt>
+                    <dd className="text-blue-600">${FINAL_TOTAL.toLocaleString()}</dd>
+                </div>
+            </div>
+            
+            <div className="mt-6 bg-blue-50 p-4 rounded border border-blue-100 flex items-start gap-3">
+                <div className="flex-shrink-0 pt-1">
+                    <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                </div>
+                <p className="text-sm text-blue-800">
+                    <strong>Phương thức thanh toán:</strong> Thanh toán khi nhận hàng (COD). Vui lòng chuẩn bị tiền mặt khi shipper giao tới.
+                </p>
+            </div>
+        </div>
+
       </main>
     </div>
   );

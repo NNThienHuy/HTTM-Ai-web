@@ -1,25 +1,46 @@
-"use client"
+"use client";
 
 import { useProductStore } from "@/app/_zustand/store";
 import toast from "react-hot-toast";
-import Image from "next/image"
+import Image from "next/image";
 import Link from "next/link";
 import { FaCheck, FaCircleQuestion, FaClock, FaXmark } from "react-icons/fa6";
 import QuantityInputCart from "@/components/QuantityInputCart";
 import { sanitize } from "@/lib/sanitize";
+import config from "@/lib/config"; // 1. Import config để lấy domain backend
+
+// 2. Thêm hàm xử lý ảnh chuẩn (copy logic từ ProductItem)
+const buildImgSrc = (src?: string) => {
+  if (!src) return "/product_placeholder.jpg";
+
+  // Nếu ảnh đã là link tuyệt đối (http/https) -> dùng luôn
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+
+  // Xóa dấu / ở đầu để tránh lỗi //
+  const cleanSrc = src.replace(/^\/+/, "");
+  
+  // Lấy domain backend
+  const baseUrl = config.apiBaseUrl?.replace(/\/+$/, "") || "http://localhost:8000";
+
+  // Nếu ảnh thuộc backend (chứa images hoặc storage) -> Nối domain vào
+  if (cleanSrc.startsWith("images") || cleanSrc.startsWith("storage")) {
+    return `${baseUrl}/${cleanSrc}`;
+  }
+
+  // Các trường hợp khác coi như ảnh ở public frontend
+  return `/${cleanSrc}`;
+};
 
 export const CartModule = () => {
-
-  const { products, removeFromCart, calculateTotals, total } =
-    useProductStore();
+  const { products, removeFromCart, calculateTotals, total } = useProductStore();
 
   const handleRemoveItem = (id: string) => {
     removeFromCart(id);
     calculateTotals();
-    toast.success("Product removed from the cart");
+    toast.success("Đã xóa sản phẩm khỏi giỏ hàng");
   };
-  return (
 
+  return (
     <form className="mt-12 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12 xl:gap-x-16">
       <section aria-labelledby="cart-heading" className="lg:col-span-7">
         <h2 id="cart-heading" className="sr-only">
@@ -33,12 +54,13 @@ export const CartModule = () => {
           {products.map((product) => (
             <li key={product.id} className="flex py-6 sm:py-10">
               <div className="flex-shrink-0">
+                {/* 3. Áp dụng hàm buildImgSrc vào đây */}
                 <Image
                   width={192}
                   height={192}
-                  src={product?.image ? `/${product.image}` : "/product_placeholder.jpg"}
-                  alt="laptop image"
-                  className="h-24 w-24 rounded-md object-cover object-center sm:h-48 sm:w-48"
+                  src={buildImgSrc(product.image)} 
+                  alt={sanitize(product.title) || "Product Image"}
+                  className="h-24 w-24 rounded-md object-contain object-center sm:h-48 sm:w-48 border border-gray-100"
                 />
               </div>
 
@@ -48,21 +70,15 @@ export const CartModule = () => {
                     <div className="flex justify-between">
                       <h3 className="text-sm">
                         <Link
-                          href={`#`}
+                          href={`/product/${product.id}`}
                           className="font-medium text-gray-700 hover:text-gray-800"
                         >
                           {sanitize(product.title)}
                         </Link>
                       </h3>
                     </div>
-                    {/* <div className="mt-1 flex text-sm">
-                        <p className="text-gray-500">{product.color}</p>
-                        {product.size ? (
-                          <p className="ml-4 border-l border-gray-200 pl-4 text-gray-500">{product.size}</p>
-                        ) : null}
-                      </div> */}
                     <p className="mt-1 text-sm font-medium text-gray-900">
-                      ${product.price}
+                      ${product.price.toLocaleString()}
                     </p>
                   </div>
 
@@ -82,19 +98,11 @@ export const CartModule = () => {
                 </div>
 
                 <p className="mt-4 flex space-x-2 text-sm text-gray-700">
-                  {1 ? (
-                    <FaCheck
-                      className="h-5 w-5 flex-shrink-0 text-green-500"
-                      aria-hidden="true"
-                    />
-                  ) : (
-                    <FaClock
-                      className="h-5 w-5 flex-shrink-0 text-gray-300"
-                      aria-hidden="true"
-                    />
-                  )}
-
-                  <span>{1 ? "In stock" : `Ships in 3 days`}</span>
+                  <FaCheck
+                    className="h-5 w-5 flex-shrink-0 text-green-500"
+                    aria-hidden="true"
+                  />
+                  <span>Còn hàng</span>
                 </p>
               </div>
             </li>
@@ -116,63 +124,42 @@ export const CartModule = () => {
 
         <dl className="mt-6 space-y-4">
           <div className="flex items-center justify-between">
-            <dt className="text-sm text-gray-600">Tổng</dt>
+            <dt className="text-sm text-gray-600">Tổng tiền hàng</dt>
             <dd className="text-sm font-medium text-gray-900">
-              ${total}
+              ${total.toLocaleString()}
             </dd>
           </div>
           <div className="flex items-center justify-between border-t border-gray-200 pt-4">
             <dt className="flex items-center text-sm text-gray-600">
-              <span>Ước tính vận chuyển</span>
-              <a
-                href="#"
-                className="ml-2 flex-shrink-0 text-gray-400 hover:text-gray-500"
-              >
-                <span className="sr-only">
-                  Tìm hiểu thêm về cách tính phí vận chuyển
-                </span>
-                <FaCircleQuestion
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                />
-              </a>
+              <span>Phí vận chuyển</span>
+              <FaCircleQuestion className="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" />
             </dt>
             <dd className="text-sm font-medium text-gray-900">$5.00</dd>
           </div>
           <div className="flex items-center justify-between border-t border-gray-200 pt-4">
             <dt className="flex text-sm text-gray-600">
-              <span>Ước tính thuế</span>
-              <a
-                href="#"
-                className="ml-2 flex-shrink-0 text-gray-400 hover:text-gray-500"
-              >
-                <span className="sr-only">
-                  Tìm hiểu thêm về cách tính thuế
-                </span>
-                <FaCircleQuestion
-                  className="h-5 w-5"
-                  aria-hidden="true"
-                />
-              </a>
+              <span>Thuế ước tính</span>
+              <FaCircleQuestion className="ml-2 h-5 w-5 text-gray-400" aria-hidden="true" />
             </dt>
             <dd className="text-sm font-medium text-gray-900">
-              ${total / 5}
+              ${(total / 10).toLocaleString()}
             </dd>
           </div>
           <div className="flex items-center justify-between border-t border-gray-200 pt-4">
             <dt className="text-base font-medium text-gray-900">
-              Tổng đơn hàng
+              Tổng thanh toán
             </dt>
             <dd className="text-base font-medium text-gray-900">
-              ${total === 0 ? 0 : Math.round(total + total / 5 + 5)}
+              ${total === 0 ? 0 : (total + total / 10 + 5).toLocaleString()}
             </dd>
           </div>
         </dl>
+
         {products.length > 0 && (
           <div className="mt-6">
             <Link
               href="/checkout"
-              className="block flex justify-center items-center w-full uppercase bg-white px-4 py-3 text-base border border-black border-gray-300 font-bold text-blue-600 shadow-sm hover:bg-black hover:bg-gray-100 focus:outline-none focus:ring-2"
+              className="block flex justify-center items-center w-full uppercase bg-blue-600 px-4 py-3 text-base border border-transparent font-bold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
             >
               <span>Thanh toán</span>
             </Link>
@@ -180,7 +167,5 @@ export const CartModule = () => {
         )}
       </section>
     </form>
-
-  )
-
-}
+  );
+};

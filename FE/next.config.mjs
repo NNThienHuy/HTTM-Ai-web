@@ -7,6 +7,15 @@ const nextConfig = {
             hostname: 'placehold.co',
             port: ""
           },
+          // THÊM 2 KHỐI NÀY ĐỂ SỬA LỖI:
+          {
+            protocol: 'http',
+            hostname: '127.0.0.1',
+          },
+          {
+            protocol: 'http',
+            hostname: 'localhost',
+          },
         ],
       },
     env: {

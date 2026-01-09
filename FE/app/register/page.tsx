@@ -45,7 +45,7 @@ const RegisterPage = () => {
 
   // --- Laravel ---
   const payload = {
-    name: `${ho} ${ten}`.trim(),
+    full_name: `${ho} ${ten}`.trim(),
     email,
     username,
     password,
