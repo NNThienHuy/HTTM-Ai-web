@@ -25,13 +25,12 @@ const RecommendedSection = () => {
           // Gọi endpoint backend bạn đã cung cấp
           const response = await apiClient.get("/api/recommendations/personalized");
           if (response.ok) {
-  const data = await response.json();
-  const list =
-    Array.isArray(data?.data) ? data.data :
-    Array.isArray(data?.products?.data) ? data.products.data :
-    [];
-  setProducts(list.slice(0, 5));
-}
+            const data = await response.json();
+            if (data.success && Array.isArray(data.data)) {
+              // YÊU CẦU CỦA BẠN: Chỉ lấy 5 sản phẩm
+              setProducts(data.data.slice(0, 5));
+            }
+          }
         } catch (error) {
           console.error("Lỗi khi tải danh sách gợi ý:", error);
         } finally {

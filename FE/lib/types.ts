@@ -1,18 +1,25 @@
 export interface Product {
-  id: number;
-  merchantId: string;
-  slug: string;
+  // Các trường bắt buộc cho UI
+  id: string | number;
   title: string;
-  mainImage: string;
   price: number;
-  rating: number;
-  description: string;
-  manufacturer: string;
-  categoryId: number;
+  mainImage: string;
   inStock: number;
-}
+  description: string;
+  slug: string; // Vẫn giữ slug ở FE để dùng cho URL
 
-export interface Category {
-  id: number;
-  name: string;
+  // --- MAPPING TỪ BACKEND LARAVEL ---
+  product_id?: number;       // Khớp với Product.php
+  name?: string;             // Khớp với Product.php
+  image_url?: string;        // Khớp với Product.php
+  stock_quantity?: number;   // Khớp với Product.php
+  rating?: number | string;  // Khớp với Product.php (decimal string)
+  category_id?: number;
+  
+  // Quan hệ (Relation)
+  category?: { 
+      category_id: number;
+      category_name: string; // Kiểm tra lại model Category của bạn
+      name?: string; 
+  };
 }

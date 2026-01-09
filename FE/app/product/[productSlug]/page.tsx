@@ -1,93 +1,127 @@
-import {
-  StockAvailabillity,
-  SingleProductRating,
-  ProductTabs,
-  SingleProductDynamicFields,
-  AddToWishlistBtn,
-} from "@/components";
-import Image from "next/image";
-import { notFound } from "next/navigation";
 import React from "react";
-import { FaSquareFacebook, FaSquareXTwitter, FaSquarePinterest } from "react-icons/fa6";
-import { sanitize } from "@/lib/sanitize";
+import Image from "next/image";
+import { SingleProductDynamicFields } from "@/components"; 
+import { sanitize, sanitizeHtml } from "@/lib/sanitize";
 import config from "@/lib/config";
+import { Product } from "@/lib/types";
 
+// ... (Hàm buildImgSrc và fetchProductById GIỮ NGUYÊN) ...
 const buildImgSrc = (src?: string) => {
-  if (!src) return "/product_placeholder.jpg";
-  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+  if (!src || src === "") return "/product_placeholder.jpg";
+  if (src.startsWith("http")) return src;
+  if (src.includes("storage")) {
+    const baseUrl = config.apiBaseUrl?.replace(/\/+$/, "") || "http://localhost:8000";
+    const cleanSrc = src.replace(/^\/+/, "");
+    return `${baseUrl}/${cleanSrc}`;
+  }
   return `/${src.replace(/^\/+/, "")}`;
 };
 
-async function fetchProductBySlug(slug: string) {
-  // ✅ dùng index + search để lấy list, rồi tìm slug trùng
-  const url = `${config.apiBaseUrl}/api/products?search=${encodeURIComponent(slug)}&per_page=50`;
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) return null;
-
-  const json = await res.json().catch(() => null);
-
-  // Laravel: { success: true, products: { data: [...] } }
-  const list = Array.isArray(json?.products?.data) ? json.products.data : [];
-  const product = list.find((p: any) => p?.slug === slug) ?? null;
-  return product;
+async function fetchProductById(id: string) {
+  try {
+    const url = `${config.apiBaseUrl}/api/products/${id}`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    const json = await res.json().catch(() => null);
+    return json?.product || null;
+  } catch (error) {
+    return null;
+  }
 }
 
+// --- SỬA PHẦN NÀY ---
 export default async function SingleProductPage({
   params,
 }: {
-  params: { productSlug: string };
+  params: Promise<{ productSlug: string }>; // 1. Thêm Promise vào type
 }) {
-  const product = await fetchProductBySlug(params.productSlug);
-  if (!product) notFound();
+  // 2. Await params trước khi dùng
+  const resolvedParams = await params;
+  const productId = resolvedParams.productSlug;
 
-  // map nhanh cho UI bạn đang dùng
-  const uiProduct = {
-    ...product,
-    title: product.name ?? product.title ?? "",
-    mainImage: product.mainImage ?? product.main_image ?? product.image ?? "",
-    inStock: product.inStock ?? product.stock_quantity ?? 0,
-    manufacturer: product.manufacturer ?? product.brand?.name ?? "",
-    rating: product.rating ?? 0,
+  // Kiểm tra nếu productId bị "undefined" (do link sai)
+  if (!productId || productId === "undefined") {
+     return <div className="p-10 text-center text-red-500">Lỗi: ID sản phẩm không hợp lệ.</div>;
+  }
+
+  const rawProduct = await fetchProductById(productId);
+
+  if (!rawProduct) {
+    return (
+      <div className="min-h-[50vh] flex items-center justify-center text-red-500 text-xl font-bold">
+        Không tìm thấy sản phẩm #{productId}
+      </div>
+    );
+  }
+
+  // Map dữ liệu
+  const uiProduct: Product = {
+    ...rawProduct,
+    id: rawProduct.product_id || rawProduct.id, 
+    title: rawProduct.name ?? rawProduct.title ?? "Sản phẩm",
+    price: Number(rawProduct.price ?? 0),
+    mainImage: rawProduct.image_url ?? rawProduct.main_image ?? "/product_placeholder.jpg",
+    inStock: Number(rawProduct.stock_quantity ?? 0),
+    description: rawProduct.description ?? "",
+    slug: productId,
   };
 
   return (
-    <div className="bg-white">
-      <div className="max-w-screen-2xl mx-auto">
-        <div className="flex justify-center gap-x-16 pt-10 max-lg:flex-col items-center gap-y-5 px-5">
-          <div>
+    <div className="bg-white text-black min-h-screen py-10">
+      <div className="max-w-6xl mx-auto px-5">
+        <div className="flex flex-col md:flex-row gap-12">
+          
+          {/* CỘT ẢNH */}
+          <div className="w-full md:w-1/2 flex justify-center bg-gray-50 rounded-xl p-5 border border-gray-100 shadow-sm">
             <Image
               src={buildImgSrc(uiProduct.mainImage)}
-              width={500}
-              height={500}
-              alt="main image"
-              className="w-auto h-auto"
+              width={600}
+              height={600}
+              alt={uiProduct.title}
+              className="object-contain w-full h-auto max-h-[500px]"
+              priority
             />
           </div>
 
-          <div className="flex flex-col gap-y-7 text-black max-[500px]:text-center">
-            <SingleProductRating rating={uiProduct.rating} />
-            <h1 className="text-3xl">{sanitize(uiProduct.title)}</h1>
-            <p className="text-xl font-semibold">${uiProduct.price}</p>
-            <StockAvailabillity stock={94} inStock={uiProduct.inStock} />
-            <SingleProductDynamicFields product={uiProduct} />
+          {/* CỘT THÔNG TIN */}
+          <div className="w-full md:w-1/2 flex flex-col gap-y-6">
+            <h1 className="text-4xl font-bold text-gray-900 leading-tight">
+              {sanitize(uiProduct.title)}
+            </h1>
 
-            <div className="flex flex-col gap-y-2 max-[500px]:items-center">
-              <AddToWishlistBtn product={uiProduct} slug={params.productSlug} />
+            <div className="flex items-center gap-x-4">
+               <p className="text-3xl font-bold text-blue-600">
+                {uiProduct.price.toLocaleString('vi-VN')} đ
+              </p>
+               <span className={`px-3 py-1 rounded-full text-sm font-medium ${uiProduct.inStock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {uiProduct.inStock > 0 ? "Còn hàng" : "Hết hàng"}
+               </span>
+            </div>
 
-              <div className="text-lg flex gap-x-2">
-                <span>Share:</span>
-                <div className="flex items-center gap-x-1 text-2xl">
-                  <FaSquareFacebook />
-                  <FaSquareXTwitter />
-                  <FaSquarePinterest />
-                </div>
-              </div>
+            <div className="divider my-0"></div>
+
+            <div className="py-2">
+                <SingleProductDynamicFields product={uiProduct} />
             </div>
           </div>
         </div>
 
-        <div className="py-16">
-          <ProductTabs product={uiProduct} />
+        {/* MÔ TẢ */}
+        <div className="mt-16">
+          <h3 className="text-2xl font-bold mb-6 border-b pb-3 text-gray-800">
+            Chi tiết sản phẩm
+          </h3>
+          <div className="prose max-w-none text-gray-700 leading-relaxed bg-white">
+            {uiProduct.description ? (
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: sanitizeHtml(uiProduct.description),
+                }}
+              />
+            ) : (
+              <p className="text-gray-400 italic">Đang cập nhật nội dung...</p>
+            )}
+          </div>
         </div>
       </div>
     </div>
