@@ -1,76 +1,69 @@
 import Image from "next/image";
-import React from "react";
 import Link from "next/link";
+import React from "react";
 import ProductItemRating from "./ProductItemRating";
 import { sanitize } from "@/lib/sanitize";
 import { Product } from "@/lib/types";
 
-// Hàm xử lý đường dẫn ảnh
+// ✅ Không bao giờ tạo ra `//...`
 const buildImgSrc = (src?: string) => {
   if (!src) return "/product_placeholder.jpg";
   if (src.startsWith("http://") || src.startsWith("https://")) return src;
-  const cleaned = src.replace(/^\/+/, "");
-  return `/${cleaned}`;
-};
-
-// Tạo href chuẩn: /product/slug/id
-const buildHref = (product: any) => {
-  const id = product?.id ?? product?.product_id;
-  const slug = (product?.slug ?? "product").toString();
-
-  if (!id) return "#";
-  return `/product/${encodeURIComponent(slug)}/${encodeURIComponent(String(id))}`;
+  return `/${src.replace(/^\/+/, "")}`;
 };
 
 const ProductItem = ({ product, color }: { product: Product; color: string }) => {
+  // @ts-ignore (phòng khi bạn có product_id)
+  const productId = product?.id ?? product?.product_id;
+  const href = productId ? `/product/${productId}` : "#";
+
   const imgSrc = buildImgSrc(product?.mainImage);
-  const href = buildHref(product);
 
   return (
-    // ✅ h-full + flex-col => đồng đều chiều cao
-    <div className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
-      {/* Image */}
+    <div
+      className={[
+        "w-full max-w-[260px]",
+        "rounded-xl border border-gray-200 bg-white",
+        "shadow-sm hover:shadow-md transition",
+        "overflow-hidden",
+      ].join(" ")}
+    >
       <Link href={href} className="block">
-        {/* ✅ Khung ảnh cố định => không lệch layout */}
-        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-50">
+        {/* ✅ Khung ảnh cố định để không bị lệch */}
+        <div className="relative w-full aspect-square bg-gray-50">
           <Image
             src={imgSrc}
-            fill
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 20vw"
-            className="object-contain p-3 transition-transform duration-300 group-hover:scale-105"
             alt={sanitize(product?.title) || "Product image"}
+            fill
+            className="object-contain p-3"
+            sizes="260px"
           />
         </div>
       </Link>
 
-      {/* Content */}
-      <div className="mt-3 flex flex-1 flex-col">
-        {/* Title */}
+      <div className="p-4 flex flex-col gap-2">
         <Link
           href={href}
-          title={sanitize(product?.title || "")}
-          className={
-            color === "black"
-              ? "text-base font-semibold text-black uppercase hover:text-blue-600 transition-colors line-clamp-2"
-              : "text-base font-semibold text-white uppercase hover:text-blue-300 transition-colors line-clamp-2"
-          }
+          className={[
+            "font-semibold uppercase line-clamp-2 min-h-[44px]",
+            color === "black" ? "text-gray-900 hover:text-blue-600" : "text-white hover:text-blue-200",
+          ].join(" ")}
+          title={sanitize(product?.title)}
         >
-          {sanitize(product?.title || "")}
+          {sanitize(product?.title)}
         </Link>
 
-        {/* Price + Rating */}
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <p className={color === "black" ? "text-lg font-bold text-black" : "text-lg font-bold text-white"}>
+        <div className="flex items-center justify-between">
+          <p className={color === "black" ? "text-gray-900 font-bold" : "text-white font-bold"}>
             ${Number(product?.price ?? 0).toLocaleString()}
           </p>
-          <ProductItemRating productRating={Number(product?.rating ?? 0)} />
         </div>
 
-        {/* Button luôn nằm đáy */}
         <Link
           href={href}
-          className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white py-2 text-sm font-bold text-blue-600 uppercase
-                     hover:bg-blue-600 hover:text-white transition-all duration-300"
+          className="mt-2 inline-flex items-center justify-center w-full rounded-lg
+                     border border-blue-600 text-blue-600 font-bold py-2
+                     hover:bg-blue-600 hover:text-white transition"
         >
           Xem chi tiết
         </Link>
