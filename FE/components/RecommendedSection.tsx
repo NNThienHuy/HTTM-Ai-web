@@ -5,28 +5,26 @@ import { useSession } from "next-auth/react";
 import apiClient from "@/lib/api";
 import { Product } from "@/lib/types";
 import ProductItem from "./ProductItem";
+import SectionTitle from "./SectionTitle";
 
-const RecommendedSection = () => {
+const asArray = (json: any): any[] => {
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json?.data)) return json.data;
+  if (Array.isArray(json?.data?.data)) return json.data.data;
+
+  if (Array.isArray(json?.products?.data)) return json.products.data;
+
+  if (Array.isArray(json?.data)) return json.data;
+
+  return [];
+};
+
+export default function RecommendedSection() {
   const { status } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const viewportRef = useRef<HTMLDivElement>(null);
-
-  const TOTAL = 8;
-  const STEP = 3;
-
-  const scrollByItems = (dir: "prev" | "next") => {
-    const el = viewportRef.current;
-    if (!el) return;
-
-    const first = el.querySelector<HTMLElement>("[data-card='1']");
-    const cardW = first?.getBoundingClientRect().width ?? 260;
-    const gap = 16; 
-    const delta = (cardW + gap) * STEP * (dir === "next" ? 1 : -1);
-
-    el.scrollBy({ left: delta, behavior: "smooth" });
-  };
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -35,96 +33,112 @@ const RecommendedSection = () => {
     }
 
     if (status === "authenticated") {
-      const fetchRecommendations = async () => {
+      (async () => {
         try {
-          const response = await apiClient.get("/api/recommendations/personalized", {
+          const res = await apiClient.get("/api/recommendations/personalized", {
             cache: "no-store",
           });
 
-          if (!response.ok) return;
-
-          const data = await response.json();
-          if (data?.success && Array.isArray(data?.data)) {
-            setProducts(data.data.slice(0, TOTAL));
+          if (!res.ok) {
+            setProducts([]);
+            return;
           }
-        } catch (error) {
-          console.error("Lỗi khi tải danh sách gợi ý:", error);
+
+          const json = await res.json();
+          const list = asArray(json);
+
+          setProducts(list.slice(0, 8));
+        } catch (e) {
+          console.error("Lỗi khi tải gợi ý:", e);
+          setProducts([]);
         } finally {
           setLoading(false);
         }
-      };
-
-      fetchRecommendations();
+      })();
     }
   }, [status]);
 
+  const canShow = useMemo(() => !loading && products.length > 0, [loading, products.length]);
   if (!loading && products.length === 0) return null;
+
+  const scrollByOneCard = (dir: "left" | "right") => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const firstCard = el.querySelector<HTMLElement>("[data-card='card']");
+    const gap = 16; 
+    const amount = (firstCard?.offsetWidth ?? 300) + gap;
+
+    el.scrollBy({
+      left: dir === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <section className="py-10 max-w-screen-2xl mx-auto px-5">
-      <div className="flex items-end justify-between gap-3 mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Sản phẩm có thể bạn sẽ thích</h2>
-          <p className="text-sm text-gray-500">Dành riêng cho bạn</p>
-        </div>
-
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => scrollByItems("prev")}
-            className="h-10 w-10 rounded-full border border-gray-300 hover:bg-gray-100"
-            aria-label="Previous"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            onClick={() => scrollByItems("next")}
-            className="h-10 w-10 rounded-full border border-gray-300 hover:bg-gray-100"
-            aria-label="Next"
-          >
-            ›
-          </button>
-        </div>
-      </div>
+      <SectionTitle title="Khuyến nghị sản phẩm" path="/shop" />
 
       {loading ? (
         <div className="text-center py-10">Đang tải gợi ý cho bạn...</div>
       ) : (
-        <div
-          ref={viewportRef}
-          className="overflow-x-auto scroll-smooth"
-          style={{
-            scrollbarWidth: "none",
-          }}
-        >
-          <style jsx>{`
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
+        <div className="relative mt-8">
 
+          {canShow && (
+            <button
+              type="button"
+              aria-label="Previous"
+              onClick={() => scrollByOneCard("left")}
+              className="absolute -left-2 top-1/2 -translate-y-1/2 z-10
+                         w-10 h-10 rounded-full bg-black/60 text-white
+                         flex items-center justify-center hover:bg-black/80"
+            >
+              ‹
+            </button>
+          )}
+
+
+          {canShow && (
+            <button
+              type="button"
+              aria-label="Next"
+              onClick={() => scrollByOneCard("right")}
+              className="absolute -right-2 top-1/2 -translate-y-1/2 z-10
+                         w-10 h-10 rounded-full bg-black/60 text-white
+                         flex items-center justify-center hover:bg-black/80"
+            >
+              ›
+            </button>
+          )}
+
+          {/* Track */}
           <div
-            className="flex gap-4 pr-2"
-            style={{
-              scrollSnapType: "x mandatory",
-            }}
+            ref={scrollerRef}
+            className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory
+                       pb-3 px-1
+                       [scrollbar-width:none] [-ms-overflow-style:none]"
           >
-            {products.map((product, idx) => (
+
+            <style jsx>{`
+              div::-webkit-scrollbar {
+                display: none;
+              }
+            `}</style>
+
+            {products.map((product) => (
               <div
-                key={product.id}
-                data-card={idx === 0 ? "1" : undefined}
-                className="
-                  shrink-0
-                  snap-start
-                  w-[80%]
-                  sm:w-[45%]
-                  md:w-[30%]
-                  lg:w-[22%]
-                  xl:w-[19%]
-                "
+                key={String((product as any)?.id ?? Math.random())}
+                data-card="card"
+                className={
+
+                  "shrink-0 snap-start " +
+                  "basis-[85%] sm:basis-1/2 md:basis-1/3 lg:basis-1/5"
+                }
               >
-                <ProductItem product={product} color="black" />
+
+                <div className="h-full rounded-xl border border-gray-200 bg-white p-4">
+                  <ProductItem product={product} color="black" />
+                </div>
               </div>
             ))}
           </div>
@@ -132,6 +146,4 @@ const RecommendedSection = () => {
       )}
     </section>
   );
-};
-
-export default RecommendedSection;
+}
