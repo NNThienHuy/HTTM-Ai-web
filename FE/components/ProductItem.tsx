@@ -13,63 +13,68 @@ const buildImgSrc = (src?: string) => {
   return `/${cleaned}`;
 };
 
-const ProductItem = ({ product, color }: { product: Product; color: string }) => {
-  const imgSrc = buildImgSrc(product.mainImage);
+// Tạo href chuẩn: /product/slug/id
+const buildHref = (product: any) => {
+  const id = product?.id ?? product?.product_id;
+  const slug = (product?.slug ?? "product").toString();
 
-  // --- SỬA LỖI URL TẠI ĐÂY ---
-  // Sử dụng ID làm định danh duy nhất cho URL. 
-  // Thêm fallback product.product_id phòng trường hợp dữ liệu chưa map field 'id'
-  // @ts-ignore
-  const productId = product.id || product.product_id;
-  
-  // Nếu không tìm thấy ID thì dùng dấu # để tránh crash trang
-  const href = productId ? `/product/${productId}` : "#";
+  if (!id) return "#";
+  return `/product/${encodeURIComponent(slug)}/${encodeURIComponent(String(id))}`;
+};
+
+const ProductItem = ({ product, color }: { product: Product; color: string }) => {
+  const imgSrc = buildImgSrc(product?.mainImage);
+  const href = buildHref(product);
 
   return (
-    <div className="flex flex-col items-center gap-y-2 group">
-      {/* 1. Link bọc hình ảnh */}
-      <Link href={href} className="cursor-pointer">
-        <Image
-          src={imgSrc}
-          width={300}
-          height={300}
-          // Thêm hiệu ứng zoom nhẹ khi hover
-          className="w-auto h-[300px] object-contain transition-transform duration-300 group-hover:scale-105"
-          alt={sanitize(product?.title) || "Product image"}
-        />
+    // ✅ h-full + flex-col => đồng đều chiều cao
+    <div className="group flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+      {/* Image */}
+      <Link href={href} className="block">
+        {/* ✅ Khung ảnh cố định => không lệch layout */}
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-50">
+          <Image
+            src={imgSrc}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 20vw"
+            className="object-contain p-3 transition-transform duration-300 group-hover:scale-105"
+            alt={sanitize(product?.title) || "Product image"}
+          />
+        </div>
       </Link>
 
-      {/* 2. Link bọc tên sản phẩm */}
-      <Link
-        href={href}
-        className={
-          color === "black"
-            ? "text-xl text-black font-normal mt-2 uppercase hover:text-blue-600 transition-colors"
-            : "text-xl text-white font-normal mt-2 uppercase hover:text-blue-300 transition-colors"
-        }
-      >
-        {sanitize(product.title)}
-      </Link>
+      {/* Content */}
+      <div className="mt-3 flex flex-1 flex-col">
+        {/* Title */}
+        <Link
+          href={href}
+          title={sanitize(product?.title || "")}
+          className={
+            color === "black"
+              ? "text-base font-semibold text-black uppercase hover:text-blue-600 transition-colors line-clamp-2"
+              : "text-base font-semibold text-white uppercase hover:text-blue-300 transition-colors line-clamp-2"
+          }
+        >
+          {sanitize(product?.title || "")}
+        </Link>
 
-      {/* 3. Giá tiền */}
-      <p
-        className={
-          color === "black"
-            ? "text-lg text-black font-semibold"
-            : "text-lg text-white font-semibold"
-        }
-      >
-        ${Number(product.price).toLocaleString()}
-      </p>
+        {/* Price + Rating */}
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <p className={color === "black" ? "text-lg font-bold text-black" : "text-lg font-bold text-white"}>
+            ${Number(product?.price ?? 0).toLocaleString()}
+          </p>
+          <ProductItemRating productRating={Number(product?.rating ?? 0)} />
+        </div>
 
-
-      {/* 5. Nút Xem chi tiết */}
-      <Link
-        href={href}
-        className="block flex justify-center items-center w-full uppercase bg-white px-0 py-2 text-base border border-gray-300 font-bold text-blue-600 hover:bg-blue-600 hover:text-white transition-all duration-300 mt-2"
-      >
-        Xem chi tiết
-      </Link>
+        {/* Button luôn nằm đáy */}
+        <Link
+          href={href}
+          className="mt-auto inline-flex w-full items-center justify-center rounded-xl border border-gray-300 bg-white py-2 text-sm font-bold text-blue-600 uppercase
+                     hover:bg-blue-600 hover:text-white transition-all duration-300"
+        >
+          Xem chi tiết
+        </Link>
+      </div>
     </div>
   );
 };
