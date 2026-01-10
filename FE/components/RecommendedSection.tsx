@@ -111,7 +111,6 @@ export default function RecommendedSection() {
             </button>
           )}
 
-          {/* Track */}
           <div
             ref={scrollerRef}
               className="flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-3 px-1 [scrollbar-width:none] [-ms-overflow-style:none]"
