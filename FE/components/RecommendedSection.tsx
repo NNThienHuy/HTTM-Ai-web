@@ -77,7 +77,7 @@ export default function RecommendedSection() {
 
   return (
     <section className="py-10 max-w-screen-2xl mx-auto px-5">
-      <SectionTitle title="Khuyến nghị sản phẩm" path="/shop" />
+      <SectionTitle title="Có thể bạn sẽ thích" path="" />
 
       {loading ? (
         <div className="text-center py-10">Đang tải gợi ý cho bạn...</div>

@@ -1,51 +1,44 @@
-import { Product, Category } from "./types";
+import { Product } from "./types";
 import config from "@/lib/config";
 
-const API_BASE_URL = config.apiBaseUrl;
-
-interface LaravelProduct {
-  id: number;
+export type Category = {
+  id: number | string;
   name: string;
-  slug: string;
-  price: number;
-  stock_quantity: number;
-  description: string | null;
-  status: string;
-  category: { id: number; name: string };
-  brand: { id: number; name: string };
-  images?: { url: string }[];
-  reviews?: { rating: number }[];
+};
+const API_BASE_URL = (config.apiBaseUrl || "http://localhost:8000").replace(/\/+$/, "");
+function buildImgSrc(src?: string) {
+  if (!src) return "/product_placeholder.jpg";
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+
+  const clean = src.replace(/^\/+/, "");
+
+  if (clean.startsWith("storage/") || clean.includes("/storage/") || clean.includes("storage/")) {
+    return `${API_BASE_URL}/${clean}`;
+  }
+
+  return `/${clean}`;
 }
 
-type LaravelPaginatePlain<T> = {
-  data: T[];
-  current_page: number;
-  last_page: number;
-  per_page: number;
-  total: number;
-};
-
-type LaravelPaginateResource<T> = {
-  data: T[];
-  meta: { current_page: number; last_page: number; per_page: number; total: number };
-  links?: unknown;
-};
-
-function isResourceStyle<T>(j: any): j is LaravelPaginateResource<T> {
-  return j && Array.isArray(j.data) && j.meta && typeof j.meta.current_page === "number";
-}
-function isPlainStyle<T>(j: any): j is LaravelPaginatePlain<T> {
-  return j && Array.isArray(j.data) && typeof j.current_page === "number";
+function toQuery(params: { [k: string]: string | string[] | undefined } = {}) {
+  const flat: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (typeof v === "string" && v !== "") flat[k] = v;
+    else if (Array.isArray(v) && (v[0] ?? "") !== "") flat[k] = String(v[0] ?? "");
+  }
+  const qs = new URLSearchParams(flat).toString();
+  return qs ? `?${qs}` : "";
 }
 
 function adaptProduct(p: any): Product {
-  const mainImage =
-    p?.images?.length ? (p.images[0].url ?? p.images[0].image ?? p.images[0]) :
-    p?.mainImage ?? p?.main_image ?? p?.image ?? "/product_placeholder.jpg";
+  const rawImg =
+    p?.images?.length
+      ? p.images[0]?.url ?? p.images[0]?.image ?? p.images[0]
+      : p?.mainImage ?? p?.main_image ?? p?.image ?? p?.image_url;
 
-  const avgRating = Array.isArray(p?.reviews) && p.reviews.length
-    ? p.reviews.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0) / p.reviews.length
-    : Number(p?.rating) || 0;
+  const avgRating =
+    Array.isArray(p?.reviews) && p.reviews.length
+      ? p.reviews.reduce((acc: number, r: any) => acc + (Number(r.rating) || 0), 0) / p.reviews.length
+      : Number(p?.rating) || 0;
 
   const brandId = p?.brand?.id ?? p?.brand_id ?? 0;
   const brandName = p?.brand?.name ?? p?.manufacturer ?? "";
@@ -53,72 +46,133 @@ function adaptProduct(p: any): Product {
   const categoryId = p?.category?.id ?? p?.category_id ?? 0;
 
   return {
-    id: p.id ?? p.product_id,
+    id: Number(p?.id ?? p?.product_id ?? 0),
     merchantId: String(brandId),
-    title: p.name ?? p.title ?? "",
-    slug: p.slug ?? "",
-    price: Number(p.price) || 0,
-    mainImage,
+    title: p?.name ?? p?.title ?? "",
+    slug: p?.slug ?? "",
+    price: Number(p?.price ?? 0),
+    mainImage: buildImgSrc(String(rawImg ?? "")),
     rating: avgRating,
-    inStock: Number(p.stock_quantity ?? p.inStock ?? p.stock ?? 0),
-    description: p.description ?? "",
-    categoryId,
+    inStock: Number(p?.stock_quantity ?? p?.inStock ?? p?.stock ?? 0),
+    description: p?.description ?? "",
+    categoryId: categoryId as any,
     manufacturer: brandName,
   };
 }
 
-function toQuery(params: { [k: string]: string | string[] | undefined }) {
-  const flat: Record<string, string> = {};
-  for (const [k, v] of Object.entries(params)) {
-    if (typeof v === "string") flat[k] = v;
-    else if (Array.isArray(v)) flat[k] = v[0] ?? "";
+async function readJsonSafe(res: Response) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(
+      `API trả về không phải JSON. Status=${res.status}. Body=${text.slice(0, 200)}`
+    );
   }
-  const qs = new URLSearchParams(flat).toString();
-  return qs ? `?${qs}` : "";
 }
 
 export async function getProducts(
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: { [key: string]: string | string[] | undefined } = {}
 ): Promise<Product[]> {
   try {
     const url = `${API_BASE_URL}/api/products${toQuery(searchParams)}`;
+
     const res = await fetch(url, {
-    cache: "no-store",
-    headers: { Accept: "application/json" },
+      cache: "no-store",
+      headers: { Accept: "application/json" },
     });
-    
-    if (!res.ok) throw new Error(`Failed to fetch products: ${res.status} ${res.statusText}`);
-    const text = await res.text();
-    let json: any;
-    try {
-      json = JSON.parse(text);
-      } catch {
-    throw new Error(`API trả về không phải JSON. Status=${res.status}. Body=${text.slice(0,200)}`);
-}
 
-    const list: LaravelProduct[] = Array.isArray(json?.products?.data)
-      ? json.products.data
-      : Array.isArray(json?.data) 
-      ? json.data
-      : Array.isArray(json)
-      ? json
-      : [];
+    if (!res.ok) {
+      throw new Error(`Failed to fetch products: ${res.status} ${res.statusText}`);
+    }
 
-    return list.map(adaptProduct);
+    const json: any = await readJsonSafe(res);
+
+    const rawList =
+      Array.isArray(json?.products?.data)
+        ? json.products.data
+        : 
+        Array.isArray(json?.data)
+        ? json.data
+        : Array.isArray(json)
+        ? json
+        : [];
+
+    return rawList.map(adaptProduct);
   } catch (e) {
     console.error("Error fetching products:", e);
     return [];
   }
 }
 
+export async function searchProducts(q: string): Promise<Product[]> {
+  try {
+    const keyword = (q ?? "").trim();
+    if (!keyword) return [];
+
+    const url = `${API_BASE_URL}/api/products/search?q=${encodeURIComponent(keyword)}`;
+
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to search products: ${res.status} ${res.statusText}`);
+    }
+
+    const json: any = await readJsonSafe(res);
+
+    const rawList = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : [];
+
+    return rawList.map(adaptProduct);
+  } catch (e) {
+    console.error("Error searching products:", e);
+    return [];
+  }
+}
+
+export async function getProductById(id: string | number): Promise<Product | null> {
+  try {
+    const pid = String(id ?? "").trim();
+    if (!pid) return null;
+
+    const url = `${API_BASE_URL}/api/products/${encodeURIComponent(pid)}`;
+
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!res.ok) return null;
+
+    const json: any = await readJsonSafe(res);
+
+    const raw = json?.product ?? json?.data ?? null;
+    if (!raw) return null;
+
+    return adaptProduct(raw);
+  } catch (e) {
+    console.error("Error fetching product by id:", e);
+    return null;
+  }
+}
+
 export async function getCategories(): Promise<Category[]> {
   try {
-    const res = await fetch(`${API_BASE_URL}/api/categories`, { cache: "no-store" });
+    const res = await fetch(`${API_BASE_URL}/api/categories`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
     if (!res.ok) throw new Error(`Failed to fetch categories: ${res.status} ${res.statusText}`);
-    const json = await res.json();
+
+    const json: any = await readJsonSafe(res);
 
     const list: Category[] = Array.isArray(json?.categories)
       ? json.categories
+      : Array.isArray(json?.data)
+      ? json.data
       : Array.isArray(json)
       ? json
       : [];

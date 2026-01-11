@@ -5,7 +5,6 @@ import ProductItemRating from "./ProductItemRating";
 import { sanitize } from "@/lib/sanitize";
 import { Product } from "@/lib/types";
 
-// ✅ Không bao giờ tạo ra `//...`
 const buildImgSrc = (src?: string) => {
   if (!src) return "/product_placeholder.jpg";
   if (src.startsWith("http://") || src.startsWith("https://")) return src;
@@ -13,7 +12,6 @@ const buildImgSrc = (src?: string) => {
 };
 
 const ProductItem = ({ product, color }: { product: Product; color: string }) => {
-  // @ts-ignore (phòng khi bạn có product_id)
   const productId = product?.id ?? product?.product_id;
   const href = productId ? `/product/${productId}` : "#";
 
@@ -29,7 +27,6 @@ const ProductItem = ({ product, color }: { product: Product; color: string }) =>
       ].join(" ")}
     >
       <Link href={href} className="block">
-        {/* ✅ Khung ảnh cố định để không bị lệch */}
         <div className="relative w-full aspect-square bg-gray-50">
           <Image
             src={imgSrc}
