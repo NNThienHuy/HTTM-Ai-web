@@ -27,6 +27,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Public Product Routes
 Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/search', [ProductController::class, 'search']);
 Route::get('/products/{productId}', [ProductController::class, 'show']);
 Route::get('/product-categories', [ProductController::class, 'getCategories']);
 

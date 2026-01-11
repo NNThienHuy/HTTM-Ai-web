@@ -6,9 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-
+use Laravel\Scout\Searchable;
 class Product extends Model
 {
+    use Searchable;
     protected $primaryKey = 'product_id';
     public $incrementing = true;        // ✅ SỬA
     protected $keyType = 'int';         // ✅ SỬA
@@ -18,6 +19,27 @@ class Product extends Model
     public function getTitleAttribute()
     {
         return $this->attributes['name'];
+    }
+    public function toSearchableArray()
+    {
+        // Load quan hệ để tìm luôn trong cấu hình laptop
+        $this->load('laptopFeature'); 
+        $features = $this->laptopFeature;
+        return [
+           'product_id' => $this->product_id,
+        'id' => $this->product_id,
+        'name' => $this->name,
+        'description' => $this->description,
+        'category' => $this->category ? $this->category->name : '',
+        
+        // --- KỸ THUẬT QUAN TRỌNG: Thêm tiền tố vào dữ liệu index ---
+        // Thay vì chỉ lưu "16", ta lưu "RAM 16GB 16 GB" để khách gõ kiểu nào cũng dính
+        'cpu' => $features ? "CPU {$features->processor} {$features->cpu}" : '',
+        'ram' => $features ? "RAM {$features->ram}GB {$features->ram} GB memory" : '',
+        'storage' => $features ? "SSD HDD {$features->storage}GB {$features->storage} GB" : '',
+        'screen' => $features ? "Màn hình {$features->screen_size} inch" : '',
+        'gpu' => $features ? "VGA GPU Card đồ họa {$features->gpu}" : '',
+        ];
     }
     protected $fillable = [
         'name',
