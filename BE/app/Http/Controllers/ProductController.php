@@ -79,4 +79,29 @@ class ProductController extends Controller
             'categories' => $categories
         ]);
     }
+    public function search(Request $request)
+    {
+        $query = $request->get('q'); // Lấy từ khóa từ URL ?q=...
+
+        if (!$query) {
+            return response()->json([
+                'success' => true,
+                'data' => []
+            ]);
+        }
+
+        // Sử dụng Scout để tìm kiếm
+        // ->query(...): để Eager Load quan hệ (tránh lỗi N+1 và lấy được ảnh/giá)
+        $products = Product::search($query)
+            ->query(function ($builder) {
+                $builder->with(['category', 'laptopFeature']);
+            })
+            ->take(20) // Giới hạn 20 kết quả tốt nhất
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $products
+        ]);
+    }
 }
