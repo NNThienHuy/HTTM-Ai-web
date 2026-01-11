@@ -5,6 +5,42 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+/**
+ * @property int $feature_id
+ * @property int $product_id
+ * @property string|null $brand
+ * @property string|null $processor
+ * @property int|null $ram
+ * @property int|null $storage
+ * @property numeric|null $screen_size
+ * @property string|null $gpu
+ * @property string|null $price_range
+ * @property numeric|null $weight
+ * @property int|null $battery_life
+ * @property string|null $purpose
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Product $product
+ * @method static \Database\Factories\LaptopFeatureFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereBatteryLife($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereBrand($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereFeatureId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereGpu($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature wherePriceRange($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereProcessor($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature wherePurpose($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereRam($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereScreenSize($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereStorage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LaptopFeature whereWeight($value)
+ * @mixin \Eloquent
+ */
 class LaptopFeature extends Model
 {
     use HasFactory;

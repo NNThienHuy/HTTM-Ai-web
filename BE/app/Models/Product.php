@@ -8,6 +8,49 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+/**
+ * @property int $product_id
+ * @property string $name
+ * @property string|null $description
+ * @property numeric $price
+ * @property int|null $category_id
+ * @property string|null $image_url
+ * @property int $stock_quantity
+ * @property numeric $rating
+ * @property int $views
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\CartItem> $cartItems
+ * @property-read int|null $cart_items_count
+ * @property-read \App\Models\ProductCategory|null $category
+ * @property-read string $formatted_price
+ * @property-read mixed $title
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\UserProductInteraction> $interactions
+ * @property-read int|null $interactions_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InventoryItem> $inventoryItems
+ * @property-read int|null $inventory_items_count
+ * @property-read \App\Models\LaptopFeature|null $laptopFeature
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $orderItems
+ * @property-read int|null $order_items_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ProductReview> $reviews
+ * @property-read int|null $reviews_count
+ * @method static \Database\Factories\ProductFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCategoryId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereImageUrl($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product wherePrice($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereRating($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereStockQuantity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Product whereViews($value)
+ * @mixin \Eloquent
+ */
 class Product extends Model
 {
     use HasFactory, Searchable;

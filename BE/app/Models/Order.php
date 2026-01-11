@@ -7,6 +7,46 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $order_id
+ * @property int $customer_id
+ * @property \Illuminate\Support\Carbon $order_date
+ * @property string $status
+ * @property numeric $total_amount
+ * @property string $shipping_address
+ * @property string|null $shipping_city
+ * @property string|null $shipping_district
+ * @property string|null $tracking_number
+ * @property string|null $note
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property string $customer_name
+ * @property string $customer_email
+ * @property string $customer_phone
+ * @property-read \App\Models\Customer $customer
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\OrderItem> $items
+ * @property-read int|null $items_count
+ * @property-read \App\Models\Payment|null $payment
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereCustomerEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereCustomerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereCustomerName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereCustomerPhone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereNote($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereOrderDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereOrderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereShippingAddress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereShippingCity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereShippingDistrict($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereTotalAmount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereTrackingNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Order whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class Order extends Model
 {
     protected $primaryKey = 'order_id';

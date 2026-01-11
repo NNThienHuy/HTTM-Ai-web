@@ -5,6 +5,31 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $interaction_id
+ * @property int $customer_id
+ * @property int $product_id
+ * @property string $interaction_type
+ * @property numeric $interaction_value
+ * @property string $interaction_date
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Customer $customer
+ * @property-read \App\Models\Guest|null $guest
+ * @property-read \App\Models\Product $product
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereCustomerId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereInteractionDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereInteractionId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereInteractionType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereInteractionValue($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereProductId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|UserProductInteraction whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class UserProductInteraction extends Model
 {
     // Chỉ định tên bảng chính xác trong migration
