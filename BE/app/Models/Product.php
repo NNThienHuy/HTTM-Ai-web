@@ -7,9 +7,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Scout\Searchable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Product extends Model
 {
-    use Searchable;
+    use HasFactory, Searchable;
     protected $primaryKey = 'product_id';
     public $incrementing = true;        // ✅ SỬA
     protected $keyType = 'int';         // ✅ SỬA
