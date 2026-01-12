@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\UserProductInteraction;
+use App\Services\HybridRecommendationService;
 use Illuminate\Http\Request;
-
 class ProductController extends Controller
 {
     public function index(Request $request)
@@ -44,29 +44,43 @@ class ProductController extends Controller
         ]);
     }
 
-    public function show(Request $request, string $productId)
-    {
+    public function show(
+        Request $request, 
+        string $productId,
+        HybridRecommendationService $hybridService // Inject Service Hybrid
+    ) {
+        // 1. Lấy thông tin sản phẩm
         $product = Product::with(['category', 'laptopFeature', 'reviews.customer'])
             ->findOrFail($productId);
 
+        // Tăng view
         $product->incrementViews();
 
-        // Record interaction - XÓA Str::uuid()
-        if ($request->user()) {
-            $customer = $request->user()->customer;
-            if ($customer) {
-                UserProductInteraction::create([
-                    'customer_id' => $customer->customer_id,
-                    'product_id' => $productId,
-                    'interaction_type' => 'view',
-                    'interaction_value' => 1.0
-                ]);
-            }
+        // 2. Ghi nhận tương tác View (để hệ thống học)
+        if ($request->user() && $request->user()->customer) {
+            UserProductInteraction::create([
+                'customer_id' => $request->user()->customer->customer_id,
+                'product_id' => $productId,
+                'interaction_type' => 'view',
+                'interaction_value' => 1.0
+            ]);
         }
 
+        // 3. CHẠY THUẬT TOÁN HYBRID
+        // Lấy Customer ID (nếu chưa đăng nhập thì = 0)
+        $customerId = $request->user()?->customer?->customer_id ?? 0;
+
+        // Hàm này bên trong đã tự động kết hợp Content + Collaborative + Popularity
+        $recommendations = $hybridService->getHybridRecommendations($product, $customerId, 8);
+
+        // 4. Trả về JSON
         return response()->json([
             'success' => true,
-            'product' => $product
+            'product' => $product,
+            
+            // Trả về 1 danh sách duy nhất "Gợi ý thông minh"
+            // Frontend hiển thị slider này là đủ
+            'recommendations' => $recommendations
         ]);
     }
 
