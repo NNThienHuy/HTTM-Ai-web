@@ -58,7 +58,21 @@ class Product extends Model
     public $incrementing = true;        // ✅ SỬA
     protected $keyType = 'int';         // ✅ SỬA
     protected $appends = ['title']; // Tự động thêm field 'title' vào JSON
+    public function getImageUrlAttribute($value)
+    {
+        // 1. Nếu trong DB có link ảnh VÀ file đó tồn tại thật trong public
+        if ($value && file_exists(public_path($value))) {
+            return asset($value); // Trả về link đầy đủ (http://domain/images/...)
+        }
 
+        // 2. Nếu là link ảnh online (https://...)
+        if ($value && str_starts_with($value, 'http')) {
+            return $value;
+        }
+
+        // 3. Nếu không có gì hết -> Trả về ảnh mặc định
+        return asset('images/default.png');
+    }
 // Tạo Accessor để map 'name' sang 'title'
     public function getTitleAttribute()
     {
