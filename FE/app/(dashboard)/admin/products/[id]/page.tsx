@@ -10,7 +10,7 @@ import {
 } from "../../../../../utils/categoryFormating";
 import { nanoid } from "nanoid";
 import apiClient from "@/lib/api";
-
+import config from "@/lib/config";
 interface Product {
   id?: string;
   title: string;
@@ -71,7 +71,21 @@ const DashboardProductDetails = ({
         toast.error("There was an error while deleting product");
       });
   };
+  const buildImgSrc = (src?: string) => {
+  if (!src || src === "") return "/product_placeholder.jpg";
 
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+
+  const baseUrl = (config.apiBaseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
+  const clean = src.replace(/^\/+/, "");
+
+  // Thêm kiểm tra cho 'images/' và 'storage/'
+  if (clean.startsWith("storage/") || clean.startsWith("images/")) {
+      return `${baseUrl}/${clean}`;
+  }
+
+  return `/${clean}`;
+};
   const updateProduct = async () => {
     if (
       product?.title === "" ||

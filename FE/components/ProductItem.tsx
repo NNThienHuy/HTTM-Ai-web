@@ -4,11 +4,25 @@ import React from "react";
 import ProductItemRating from "./ProductItemRating";
 import { sanitize } from "@/lib/sanitize";
 import { Product } from "@/lib/types";
-
+import config from "@/lib/config";
+// const buildImgSrc = (src?: string) => {
+//   if (!src) return "/product_placeholder.jpg";
+//   if (src.startsWith("http://") || src.startsWith("https://")) return src;
+//   return `/${src.replace(/^\/+/, "")}`;
+// };
 const buildImgSrc = (src?: string) => {
   if (!src) return "/product_placeholder.jpg";
   if (src.startsWith("http://") || src.startsWith("https://")) return src;
-  return `/${src.replace(/^\/+/, "")}`;
+  
+  const cleanSrc = src.replace(/^\/+/, "");
+  const baseUrl = (config.apiBaseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
+
+  // Nếu ảnh là 'images/...' (do seeder) hoặc 'storage/...' (do upload)
+  if (cleanSrc.startsWith("images/") || cleanSrc.startsWith("storage/")) {
+      return `${baseUrl}/${cleanSrc}`;
+  }
+
+  return `/${cleanSrc}`;
 };
 
 const ProductItem = ({ product, color }: { product: Product; color: string }) => {

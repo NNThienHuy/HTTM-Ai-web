@@ -12,13 +12,14 @@ function buildImgSrc(src?: string) {
 
   const clean = src.replace(/^\/+/, "");
 
-  if (clean.startsWith("storage/") || clean.includes("/storage/") || clean.includes("storage/")) {
+  // Nếu ảnh nằm trong thư mục storage hoặc images của Backend -> Nối domain vào
+  if (clean.startsWith("storage/") || clean.startsWith("images/")) {
     return `${API_BASE_URL}/${clean}`;
   }
 
+  // Mặc định trả về ảnh trong public của Frontend
   return `/${clean}`;
 }
-
 function toQuery(params: { [k: string]: string | string[] | undefined } = {}) {
   const flat: Record<string, string> = {};
   for (const [k, v] of Object.entries(params)) {
@@ -47,7 +48,7 @@ function adaptProduct(p: any): Product {
 
   return {
     id: Number(p?.id ?? p?.product_id ?? 0),
-    merchantId: String(brandId),
+    // merchantId: String(brandId),
     title: p?.name ?? p?.title ?? "",
     slug: p?.slug ?? "",
     price: Number(p?.price ?? 0),
@@ -55,8 +56,8 @@ function adaptProduct(p: any): Product {
     rating: avgRating,
     inStock: Number(p?.stock_quantity ?? p?.inStock ?? p?.stock ?? 0),
     description: p?.description ?? "",
-    categoryId: categoryId as any,
-    manufacturer: brandName,
+    // categoryId: categoryId as any,
+    // manufacturer: brandName,
   };
 }
 
