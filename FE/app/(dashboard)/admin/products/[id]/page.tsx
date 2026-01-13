@@ -183,12 +183,12 @@ const AddNewProduct = () => {
       <DashboardSidebar />
 
       <div className="flex flex-col gap-y-7 xl:ml-5 max-xl:px-5 w-full">
-        <h1 className="text-3xl font-semibold">Add new product</h1>
+        <h1 className="text-3xl font-semibold">Thêm sản phẩm</h1>
 
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Product name:</span>
+              <span className="label-text">Tên sản phẩm:</span>
             </div>
             <input
               type="text"
@@ -210,7 +210,7 @@ const AddNewProduct = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Product slug:</span>
+              <span className="label-text">Slug sản phẩm:</span>
             </div>
             <input
               type="text"
@@ -229,31 +229,7 @@ const AddNewProduct = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Category:</span>
-            </div>
-            <select
-              className="select select-bordered"
-              value={product.categoryId}
-              onChange={(e) =>
-                setProduct((prev) => ({ ...prev, categoryId: e.target.value }))
-              }
-            >
-              <option value="" disabled>
-                -- Select category --
-              </option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div>
-          <label className="form-control w-full max-w-xs">
-            <div className="label">
-              <span className="label-text">Product price:</span>
+              <span className="label-text">Giá sản phẩm:</span>
             </div>
             <input
               type="text"
@@ -272,7 +248,7 @@ const AddNewProduct = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Manufacturer:</span>
+              <span className="label-text">Nhà sản xuất:</span>
             </div>
             <input
               type="text"
@@ -288,7 +264,7 @@ const AddNewProduct = () => {
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
-              <span className="label-text">Is product in stock?</span>
+              <span className="label-text">Sản phẩm có sẵn?</span>
             </div>
             <select
               className="select select-bordered"
@@ -297,8 +273,8 @@ const AddNewProduct = () => {
                 setProduct((prev) => ({ ...prev, inStock: Number(e.target.value) }))
               }
             >
-              <option value={1}>Yes</option>
-              <option value={0}>No</option>
+              <option value={1}>Có</option>
+              <option value={0}>Không</option>
             </select>
           </label>
         </div>
@@ -329,7 +305,7 @@ const AddNewProduct = () => {
         <div>
           <label className="form-control">
             <div className="label">
-              <span className="label-text">Product description:</span>
+              <span className="label-text">Mô tả sản phẩm:</span>
             </div>
             <textarea
               className="textarea textarea-bordered h-24"
