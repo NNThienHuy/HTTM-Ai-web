@@ -1,29 +1,51 @@
 "use client";
+
 import { DashboardSidebar } from "@/components";
 import apiClient from "@/lib/api";
-import { convertCategoryNameToURLFriendly as convertSlugToURLFriendly } from "@/utils/categoryFormating";
+import config from "@/lib/config";
 import { sanitizeFormData } from "@/lib/form-sanitize";
+import { convertCategoryNameToURLFriendly as convertSlugToURLFriendly } from "@/utils/categoryFormating";
 import Image from "next/image";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface Category {
   id: string;
   name: string;
 }
 
+type NewProduct = {
+  title: string;
+  price: number;
+  manufacturer: string;
+  inStock: number;
+  mainImage: string;
+  description: string;
+  slug: string;
+  categoryId: string;
+};
+
+const buildImgSrc = (src?: string) => {
+  if (!src || src === "") return "/product_placeholder.jpg";
+  if (src.startsWith("http://") || src.startsWith("https://")) return src;
+
+  const baseUrl = (config.apiBaseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
+  const clean = src.replace(/^\/+/, "");
+
+  // BE trả "storage/..." hoặc "images/..."
+  if (clean.startsWith("storage/") || clean.startsWith("images/")) {
+    return `${baseUrl}/${clean}`;
+  }
+
+  // public/...
+  return `/${clean}`;
+};
+
 const AddNewProduct = () => {
-  // 1. Xóa merchantId khỏi state
-  const [product, setProduct] = useState<{
-    title: string;
-    price: number;
-    manufacturer: string;
-    inStock: number;
-    mainImage: string;
-    description: string;
-    slug: string;
-    categoryId: string;
-  }>({
+  const router = useRouter();
+
+  const [product, setProduct] = useState<NewProduct>({
     title: "",
     price: 0,
     manufacturer: "",
@@ -33,32 +55,113 @@ const AddNewProduct = () => {
     slug: "",
     categoryId: "",
   });
-  
+
   const [categories, setCategories] = useState<Category[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // ✅ để hiện nút Sửa sau khi tạo xong
+  const [createdId, setCreatedId] = useState<string | null>(null);
+
+  const canSubmit = useMemo(() => {
+    return (
+      product.title.trim() &&
+      product.slug.trim() &&
+      product.manufacturer.trim() &&
+      product.description.trim() &&
+      !!product.categoryId
+    );
+  }, [product]);
+
+
+  const normalizeCategories = (raw: any): Category[] => {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (Array.isArray(raw?.categories)) return raw.categories;
+  if (Array.isArray(raw?.result)) return raw.result;
+  return [];
+};
+
+const fetchCategories = async () => {
+  try {
+    const res = await apiClient.get("/api/categories");
+    const raw = await res.json();
+
+    const list = normalizeCategories(raw);
+    setCategories(list);
+
+    // set default categoryId nếu chưa có
+    setProduct((prev) => ({
+      ...prev,
+      categoryId: prev.categoryId || list[0]?.id || "",
+    }));
+  } catch {
+    toast.error("Không tải được danh mục");
+    setCategories([]); // fallback an toàn
+  }
+};
+  const uploadFile = async (file: File) => {
+    const formData = new FormData();
+    formData.append("uploadedFile", file);
+
+    setIsUploading(true);
+    try {
+      const res = await apiClient.post("/api/main-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        toast.error("File upload unsuccessful.");
+        return;
+      }
+
+      const data = await res.json().catch(() => null);
+      const uploadedPath = data?.path || data?.url || file.name;
+
+      setProduct((prev) => ({ ...prev, mainImage: uploadedPath }));
+      toast.success("Upload ảnh OK");
+    } catch (e) {
+      toast.error("Upload lỗi. Vui lòng thử lại.");
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const addProduct = async () => {
-    // 2. Xóa kiểm tra merchantId
-    if (
-      product.title === "" ||
-      product.manufacturer === "" ||
-      product.description == "" ||
-      product.slug === ""
-    ) {
+    if (!canSubmit) {
       toast.error("Please enter values in input fields");
       return;
     }
 
+    setIsSaving(true);
     try {
       const sanitizedProduct = sanitizeFormData(product);
-      console.log("Sending product data:", sanitizedProduct);
 
-      const response = await apiClient.post(`/api/products`, sanitizedProduct);
+      // ✅ FIX: gửi đúng dạng RequestInit như các chỗ PUT/DELETE của bạn
+      const response = await apiClient.post(`/api/products`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sanitizedProduct),
+      });
 
       if (response.status === 201) {
-        const data = await response.json();
-        console.log("Product created successfully:", data);
+        const data = await response.json().catch(() => null);
+
+        // cố lấy id theo nhiều kiểu response phổ biến
+        const newId =
+          data?.id ??
+          data?.product?.id ??
+          data?.data?.id ??
+          data?.data?.product?.id ??
+          null;
+
+        if (newId) setCreatedId(String(newId));
+
         toast.success("Product added successfully");
-        setProduct({
+
+        // reset form (giữ category mặc định)
+        setProduct((prev) => ({
           title: "",
           price: 0,
           manufacturer: "",
@@ -66,65 +169,25 @@ const AddNewProduct = () => {
           mainImage: "",
           description: "",
           slug: "",
-          categoryId: categories[0]?.id || "",
-        });
-      } else {
-        const errorData = await response.json();
-        console.error("Failed to create product:", errorData);
-        toast.error(`"Error:" ${errorData.message || "Failed to add product"}`);
-      }
-    } catch (error) {
-      console.error("Error adding product:", error);
-      toast.error("Network error. Please try again.");
-    }
-  };
-
-  const uploadFile = async (file: any) => {
-    const formData = new FormData();
-    formData.append("uploadedFile", file);
-
-    try {
-      const response = await apiClient.post("/api/main-image", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-      } else {
-        console.error("File upload unsuccessfull");
-      }
-    } catch (error) {
-      console.error("Error happend while sending request:", error);
-    }
-  };
-
-  const fetchCategories = async () => {
-    apiClient.get(`/api/categories`)
-      .then((res) => {
-        return res.json();
-      })
-      .then((data) => {
-        setCategories(data);
-        // Set default category
-        setProduct((prev) => ({
-          ...prev,
-          categoryId: data[0]?.id || "",
+          categoryId: prev.categoryId || categories[0]?.id || "",
         }));
-      });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(`Error: ${errorData?.message || "Failed to add product"}`);
+      }
+    } catch (error) {
+      toast.error("Network error. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
   };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
 
   return (
     <div className="bg-white flex justify-start max-w-screen-2xl mx-auto xl:h-full max-xl:flex-col max-xl:gap-y-5">
       <DashboardSidebar />
+
       <div className="flex flex-col gap-y-7 xl:ml-5 max-xl:px-5 w-full">
         <h1 className="text-3xl font-semibold">Add new product</h1>
-        
-        {/* 3. Đã xóa khối div chọn Merchant ở đây */}
 
         <div>
           <label className="form-control w-full max-w-xs">
@@ -134,10 +197,16 @@ const AddNewProduct = () => {
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={product?.title}
-              onChange={(e) =>
-                setProduct({ ...product, title: e.target.value })
-              }
+              value={product.title}
+              onChange={(e) => {
+                const v = e.target.value;
+                setProduct((prev) => ({
+                  ...prev,
+                  title: v,
+                  // auto slug nếu đang để trống (đỡ “form không hoạt động” vì thiếu slug)
+                  slug: prev.slug ? prev.slug : convertSlugToURLFriendly(v),
+                }));
+              }}
             />
           </label>
         </div>
@@ -150,12 +219,12 @@ const AddNewProduct = () => {
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={convertSlugToURLFriendly(product?.slug)}
+              value={convertSlugToURLFriendly(product.slug)}
               onChange={(e) =>
-                setProduct({
-                  ...product,
+                setProduct((prev) => ({
+                  ...prev,
                   slug: convertSlugToURLFriendly(e.target.value),
-                })
+                }))
               }
             />
           </label>
@@ -168,17 +237,19 @@ const AddNewProduct = () => {
             </div>
             <select
               className="select select-bordered"
-              value={product?.categoryId}
+              value={product.categoryId}
               onChange={(e) =>
-                setProduct({ ...product, categoryId: e.target.value })
+                setProduct((prev) => ({ ...prev, categoryId: e.target.value }))
               }
             >
-              {categories &&
-                categories.map((category: any) => (
-                  <option key={category?.id} value={category?.id}>
-                    {category?.name}
-                  </option>
-                ))}
+              <option value="" disabled>
+                -- Select category --
+              </option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </label>
         </div>
@@ -191,13 +262,17 @@ const AddNewProduct = () => {
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={product?.price}
+              value={Number.isFinite(product.price) ? product.price : ""}
               onChange={(e) =>
-                setProduct({ ...product, price: Number(e.target.value) })
+                setProduct((prev) => ({
+                  ...prev,
+                  price: Number(e.target.value),
+                }))
               }
             />
           </label>
         </div>
+
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
@@ -206,13 +281,14 @@ const AddNewProduct = () => {
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={product?.manufacturer}
+              value={product.manufacturer}
               onChange={(e) =>
-                setProduct({ ...product, manufacturer: e.target.value })
+                setProduct((prev) => ({ ...prev, manufacturer: e.target.value }))
               }
             />
           </label>
         </div>
+
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
@@ -220,9 +296,9 @@ const AddNewProduct = () => {
             </div>
             <select
               className="select select-bordered"
-              value={product?.inStock}
+              value={product.inStock}
               onChange={(e) =>
-                setProduct({ ...product, inStock: Number(e.target.value) })
+                setProduct((prev) => ({ ...prev, inStock: Number(e.target.value) }))
               }
             >
               <option value={1}>Yes</option>
@@ -230,25 +306,30 @@ const AddNewProduct = () => {
             </select>
           </label>
         </div>
+
         <div>
           <input
             type="file"
+            disabled={isUploading}
             className="file-input file-input-bordered file-input-lg w-full max-w-sm"
-            onChange={(e: any) => {
-              uploadFile(e.target.files[0]);
-              setProduct({ ...product, mainImage: e.target.files[0].name });
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) uploadFile(f);
             }}
           />
-          {product?.mainImage && (
+
+          {product.mainImage ? (
             <Image
-              src={`/` + product?.mainImage}
-              alt={product?.title}
-              className="w-auto h-auto"
+              src={buildImgSrc(product.mainImage)}
+              alt={product.title || "product"}
+              className="w-auto h-auto mt-2"
               width={100}
               height={100}
+              unoptimized
             />
-          )}
+          ) : null}
         </div>
+
         <div>
           <label className="form-control">
             <div className="label">
@@ -256,21 +337,34 @@ const AddNewProduct = () => {
             </div>
             <textarea
               className="textarea textarea-bordered h-24"
-              value={product?.description}
+              value={product.description}
               onChange={(e) =>
-                setProduct({ ...product, description: e.target.value })
+                setProduct((prev) => ({ ...prev, description: e.target.value }))
               }
-            ></textarea>
+            />
           </label>
         </div>
-        <div className="flex gap-x-2">
+
+        <div className="flex gap-x-2 flex-wrap">
           <button
             onClick={addProduct}
             type="button"
-            className="uppercase bg-blue-500 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2"
+            disabled={!canSubmit || isSaving}
+            className="uppercase bg-blue-500 px-10 py-5 text-lg border border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 disabled:opacity-50"
           >
-            Add product
+            {isSaving ? "Adding..." : "Add product"}
           </button>
+
+          {/* ✅ NÚT SỬA: hiện sau khi tạo thành công */}
+          {createdId ? (
+            <button
+              type="button"
+              onClick={() => router.push(`/admin/products/${createdId}`)}
+              className="uppercase bg-amber-500 px-10 py-5 text-lg border border-gray-300 font-bold text-white shadow-sm hover:bg-amber-600"
+            >
+              Sửa sản phẩm vừa tạo
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
