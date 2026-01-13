@@ -4,9 +4,9 @@ import { DashboardSidebar } from "@/components";
 import apiClient from "@/lib/api";
 import config from "@/lib/config";
 import { sanitizeFormData } from "@/lib/form-sanitize";
-import { convertCategoryNameToURLFriendly as convertSlugToURLFriendly } from "@/utils/categoryFormating";
+import { convertCategoryNameToURLFriendly as slugify } from "@/utils/categoryFormating";
 import Image from "next/image";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 
@@ -27,22 +27,25 @@ type NewProduct = {
 };
 
 const buildImgSrc = (src?: string) => {
-  if (!src || src === "") return "/product_placeholder.jpg";
+  if (!src) return "/product_placeholder.jpg";
   if (src.startsWith("http://") || src.startsWith("https://")) return src;
 
   const baseUrl = (config.apiBaseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
   const clean = src.replace(/^\/+/, "");
 
-  // BE trả "storage/..." hoặc "images/..."
-  if (clean.startsWith("storage/") || clean.startsWith("images/")) {
-    return `${baseUrl}/${clean}`;
-  }
-
-  // public/...
+  if (clean.startsWith("storage/") || clean.startsWith("images/")) return `${baseUrl}/${clean}`;
   return `/${clean}`;
 };
 
-const AddNewProduct = () => {
+const normalizeCategories = (raw: any): Category[] => {
+  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw?.data)) return raw.data;
+  if (Array.isArray(raw?.categories)) return raw.categories;
+  if (Array.isArray(raw?.result)) return raw.result;
+  return [];
+};
+
+export default function AddNewProduct() {
   const router = useRouter();
 
   const [product, setProduct] = useState<NewProduct>({
@@ -59,48 +62,41 @@ const AddNewProduct = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
-  // ✅ để hiện nút Sửa sau khi tạo xong
   const [createdId, setCreatedId] = useState<string | null>(null);
 
-  const canSubmit = useMemo(() => {
-    return (
-      product.title.trim() &&
-      product.slug.trim() &&
-      product.manufacturer.trim() &&
-      product.description.trim() &&
-      !!product.categoryId
-    );
-  }, [product]);
+  // preview ảnh local để biết chắc file input hoạt động
+  const [previewUrl, setPreviewUrl] = useState<string>("");
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
-  const normalizeCategories = (raw: any): Category[] => {
-  if (Array.isArray(raw)) return raw;
-  if (Array.isArray(raw?.data)) return raw.data;
-  if (Array.isArray(raw?.categories)) return raw.categories;
-  if (Array.isArray(raw?.result)) return raw.result;
-  return [];
-};
+  const fetchCategories = async () => {
+    try {
+      const res = await apiClient.get("/api/categories");
+      const raw = await res.json();
 
-const fetchCategories = async () => {
-  try {
-    const res = await apiClient.get("/api/categories");
-    const raw = await res.json();
+      const list = normalizeCategories(raw);
+      setCategories(list);
 
-    const list = normalizeCategories(raw);
-    setCategories(list);
+      // set default categoryId
+      setProduct((p) => ({
+        ...p,
+        categoryId: p.categoryId || list[0]?.id || "",
+      }));
+    } catch {
+      setCategories([]);
+      toast.error("Không tải được danh mục");
+    }
+  };
 
-    // set default categoryId nếu chưa có
-    setProduct((prev) => ({
-      ...prev,
-      categoryId: prev.categoryId || list[0]?.id || "",
-    }));
-  } catch {
-    toast.error("Không tải được danh mục");
-    setCategories([]); // fallback an toàn
-  }
-};
-  const uploadFile = async (file: File) => {
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const uploadMainImage = async (file: File) => {
     const formData = new FormData();
     formData.append("uploadedFile", file);
 
@@ -119,9 +115,9 @@ const fetchCategories = async () => {
       const data = await res.json().catch(() => null);
       const uploadedPath = data?.path || data?.url || file.name;
 
-      setProduct((prev) => ({ ...prev, mainImage: uploadedPath }));
+      setProduct((p) => ({ ...p, mainImage: uploadedPath }));
       toast.success("Upload ảnh OK");
-    } catch (e) {
+    } catch {
       toast.error("Upload lỗi. Vui lòng thử lại.");
     } finally {
       setIsUploading(false);
@@ -129,53 +125,59 @@ const fetchCategories = async () => {
   };
 
   const addProduct = async () => {
-    if (!canSubmit) {
-      toast.error("Please enter values in input fields");
+    // validation đặt ở đây để nút luôn bấm được
+    if (
+      !product.title.trim() ||
+      !product.slug.trim() ||
+      !product.manufacturer.trim() ||
+      !product.description.trim() ||
+      !product.categoryId
+    ) {
+      toast.error("Bạn cần nhập đủ: tên, slug, NSX, mô tả, danh mục");
       return;
     }
 
     setIsSaving(true);
     try {
-      const sanitizedProduct = sanitizeFormData(product);
+      const payload = sanitizeFormData(product);
 
-      // ✅ FIX: gửi đúng dạng RequestInit như các chỗ PUT/DELETE của bạn
-      const response = await apiClient.post(`/api/products`, {
+      const res = await apiClient.post("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sanitizedProduct),
+        body: JSON.stringify(payload),
       });
 
-      if (response.status === 201) {
-        const data = await response.json().catch(() => null);
-
-        // cố lấy id theo nhiều kiểu response phổ biến
-        const newId =
-          data?.id ??
-          data?.product?.id ??
-          data?.data?.id ??
-          data?.data?.product?.id ??
-          null;
-
-        if (newId) setCreatedId(String(newId));
-
-        toast.success("Product added successfully");
-
-        // reset form (giữ category mặc định)
-        setProduct((prev) => ({
-          title: "",
-          price: 0,
-          manufacturer: "",
-          inStock: 1,
-          mainImage: "",
-          description: "",
-          slug: "",
-          categoryId: prev.categoryId || categories[0]?.id || "",
-        }));
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        toast.error(`Error: ${errorData?.message || "Failed to add product"}`);
+      if (res.status !== 201) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err?.message || "Failed to add product");
+        return;
       }
-    } catch (error) {
+
+      const data = await res.json().catch(() => null);
+      const newId =
+        data?.id ??
+        data?.product?.id ??
+        data?.data?.id ??
+        data?.data?.product?.id ??
+        null;
+
+      if (newId) setCreatedId(String(newId));
+
+      toast.success("Product added successfully");
+
+      // reset (giữ categoryId)
+      setProduct((p) => ({
+        title: "",
+        price: 0,
+        manufacturer: "",
+        inStock: 1,
+        mainImage: "",
+        description: "",
+        slug: "",
+        categoryId: p.categoryId,
+      }));
+      setPreviewUrl("");
+    } catch {
       toast.error("Network error. Please try again.");
     } finally {
       setIsSaving(false);
@@ -191,20 +193,17 @@ const fetchCategories = async () => {
 
         <div>
           <label className="form-control w-full max-w-xs">
-            <div className="label">
-              <span className="label-text">Tên sản phẩm:</span>
-            </div>
+            <div className="label"><span className="label-text">Tên sản phẩm:</span></div>
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
               value={product.title}
               onChange={(e) => {
                 const v = e.target.value;
-                setProduct((prev) => ({
-                  ...prev,
+                setProduct((p) => ({
+                  ...p,
                   title: v,
-                  // auto slug nếu đang để trống (đỡ “form không hoạt động” vì thiếu slug)
-                  slug: prev.slug ? prev.slug : convertSlugToURLFriendly(v),
+                  slug: p.slug ? p.slug : slugify(v),
                 }));
               }}
             />
@@ -213,69 +212,47 @@ const fetchCategories = async () => {
 
         <div>
           <label className="form-control w-full max-w-xs">
-            <div className="label">
-              <span className="label-text">Slug sản phẩm:</span>
-            </div>
+            <div className="label"><span className="label-text">Sản phẩm Slug:</span></div>
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={convertSlugToURLFriendly(product.slug)}
-              onChange={(e) =>
-                setProduct((prev) => ({
-                  ...prev,
-                  slug: convertSlugToURLFriendly(e.target.value),
-                }))
-              }
+              value={slugify(product.slug)}
+              onChange={(e) => setProduct((p) => ({ ...p, slug: slugify(e.target.value) }))}
             />
           </label>
         </div>
 
         <div>
           <label className="form-control w-full max-w-xs">
-            <div className="label">
-              <span className="label-text">Giá sản phẩm:</span>
-            </div>
+            <div className="label"><span className="label-text">Giá sản phẩm:</span></div>
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
               value={Number.isFinite(product.price) ? product.price : ""}
-              onChange={(e) =>
-                setProduct((prev) => ({
-                  ...prev,
-                  price: Number(e.target.value),
-                }))
-              }
+              onChange={(e) => setProduct((p) => ({ ...p, price: Number(e.target.value) }))}
             />
           </label>
         </div>
 
         <div>
           <label className="form-control w-full max-w-xs">
-            <div className="label">
-              <span className="label-text">Nhà sản xuất:</span>
-            </div>
+            <div className="label"><span className="label-text">Nhà máy:</span></div>
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
               value={product.manufacturer}
-              onChange={(e) =>
-                setProduct((prev) => ({ ...prev, manufacturer: e.target.value }))
-              }
+              onChange={(e) => setProduct((p) => ({ ...p, manufacturer: e.target.value }))}
             />
           </label>
         </div>
 
         <div>
           <label className="form-control w-full max-w-xs">
-            <div className="label">
-              <span className="label-text">Sản phẩm có sẵn?</span>
-            </div>
+            <div className="label"><span className="label-text">Sản phẩm có sẵn?</span></div>
             <select
               className="select select-bordered"
               value={product.inStock}
-              onChange={(e) =>
-                setProduct((prev) => ({ ...prev, inStock: Number(e.target.value) }))
-              }
+              onChange={(e) => setProduct((p) => ({ ...p, inStock: Number(e.target.value) }))}
             >
               <option value={1}>Có</option>
               <option value={0}>Không</option>
@@ -286,17 +263,24 @@ const fetchCategories = async () => {
         <div>
           <input
             type="file"
-            disabled={isUploading}
             className="file-input file-input-bordered file-input-lg w-full max-w-sm"
+            // ✅ không disable để bạn luôn chọn được file
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f) uploadFile(f);
+              if (!f) return;
+
+              // preview local
+              const url = URL.createObjectURL(f);
+              setPreviewUrl(url);
+
+              // upload lên BE
+              uploadMainImage(f);
             }}
           />
 
-          {product.mainImage ? (
+          {(previewUrl || product.mainImage) ? (
             <Image
-              src={buildImgSrc(product.mainImage)}
+              src={previewUrl || buildImgSrc(product.mainImage)}
               alt={product.title || "product"}
               className="w-auto h-auto mt-2"
               width={100}
@@ -304,34 +288,31 @@ const fetchCategories = async () => {
               unoptimized
             />
           ) : null}
+
+          {isUploading ? <p className="text-sm text-gray-500">Đang upload ảnh...</p> : null}
         </div>
 
         <div>
           <label className="form-control">
-            <div className="label">
-              <span className="label-text">Mô tả sản phẩm:</span>
-            </div>
+            <div className="label"><span className="label-text">Mô tả sản phẩm:</span></div>
             <textarea
               className="textarea textarea-bordered h-24"
               value={product.description}
-              onChange={(e) =>
-                setProduct((prev) => ({ ...prev, description: e.target.value }))
-              }
+              onChange={(e) => setProduct((p) => ({ ...p, description: e.target.value }))}
             />
           </label>
         </div>
 
         <div className="flex gap-x-2 flex-wrap">
           <button
-            onClick={addProduct}
             type="button"
-            disabled={!canSubmit || isSaving}
+            onClick={addProduct}
+            disabled={isSaving}
             className="uppercase bg-blue-500 px-10 py-5 text-lg border border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 disabled:opacity-50"
           >
             {isSaving ? "Adding..." : "Add product"}
           </button>
 
-          {/* ✅ NÚT SỬA: hiện sau khi tạo thành công */}
           {createdId ? (
             <button
               type="button"
@@ -345,6 +326,4 @@ const fetchCategories = async () => {
       </div>
     </div>
   );
-};
-
-export default AddNewProduct;
+}
