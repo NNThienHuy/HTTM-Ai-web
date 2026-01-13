@@ -50,7 +50,7 @@ class Account extends Authenticatable
     
     // 1. THÊM 'role' VÀO MẢNG APPENDS
     // Giúp JSON trả về có cả 'id' và 'role'
-    protected $appends = ['id', 'role']; 
+    protected $appends = ['id', 'role','name']; 
     
     public function getIdAttribute()
     {
@@ -62,6 +62,10 @@ class Account extends Authenticatable
     public function getRoleAttribute()
     {
         return $this->user_type; 
+    }
+    public function getNameAttribute()
+    {
+        return $this->customer ? $this->customer->full_name : $this->username;
     }
 
     protected $fillable = [
