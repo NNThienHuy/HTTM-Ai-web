@@ -9,74 +9,123 @@ use Illuminate\Http\Request;
 
 class OrderController extends Controller
 {
+    // 1. LẤY DANH SÁCH ĐƠN HÀNG
+    // Route: GET /api/admin/orders
     public function index(Request $request)
     {
-        // Trả về danh sách đơn hàng
-        return response()->json(Order::with('customer.account')->orderBy('created_at', 'desc')->get());
+        // Load quan hệ 'customer' để phòng trường hợp order.customer_name bị null
+        $orders = Order::with('customer')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Xử lý dữ liệu (nếu cần) để đảm bảo không bị null
+        $orders->transform(function ($order) {
+            // Nếu bảng orders chưa lưu tên, lấy từ bảng customer
+            if (empty($order->customer_name) && $order->customer) {
+                $order->customer_name = $order->customer->last_name . ' ' . $order->customer->first_name;
+            }
+            if (empty($order->customer_email) && $order->customer) {
+                $order->customer_email = $order->customer->email;
+            }
+            return $order;
+        });
+
+        return response()->json($orders);
     }
 
+    // 2. CHI TIẾT ĐƠN HÀNG
+    // Route: GET /api/admin/orders/{id}
     public function show($id)
     {
-        $order = Order::with('items.product')->find($id);
-        if (!$order) return response()->json(['error' => 'Not found'], 404);
-        
-        // MAPPING DỮ LIỆU ĐẦY ĐỦ CHO FE
-        // FE dùng các trường: adress (lưu ý chính tả FE), city, country, postalCode...
-        // Nếu DB của bạn chưa có các cột này, ta trả về chuỗi rỗng để FE không bị lỗi.
-        
-        return response()->json([
-            'id' => $order->order_id,
-            'name' => $order->customer_name, 
-            'lastname' => '', // FE cần lastname, nếu không có thì để rỗng
-            'email' => $order->customer_email,
-            'phone' => $order->customer_phone,
-            'adress' => $order->shipping_address, // FE viết sai chính tả là 'adress', BE phải theo
-            'apartment' => '', // DB chưa có
-            'company' => '',   // DB chưa có
-            'city' => $order->shipping_city ?? '', // Lấy từ DB nếu có
-            'country' => 'Vietnam', // Mặc định
-            'postalCode' => '',
-            'dateTime' => $order->created_at->format('Y-m-d H:i:s'),
-            'status' => $order->status, // processing, delivered, canceled
-            'total' => $order->total_amount,
-            'orderNotice' => $order->note,
-        ]);
-    }
+        // Tìm theo order_id (khóa chính)
+        $order = Order::with('customer')->find($id);
 
-    public function update(Request $request, $id)
-    {
-        $order = Order::find($id);
-        if (!$order) return response()->json(['error' => 'Not found'], 404);
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
 
-        // FE gửi lên rất nhiều trường, nhưng ta chỉ cần update status và các thông tin cơ bản
-        $order->status = $request->status;
-        $order->customer_name = $request->name . ' ' . $request->lastname;
-        $order->customer_phone = $request->phone;
-        $order->shipping_address = $request->adress; // FE gửi 'adress'
-        $order->note = $request->orderNotice;
-        
-        // Lưu các trường khác nếu DB bạn có hỗ trợ (city, district...)
-        
-        $order->save();
+        // Fallback dữ liệu nếu trong bảng orders bị thiếu
+        if (empty($order->customer_name) && $order->customer) {
+            $order->customer_name = $order->customer->last_name . ' ' . $order->customer->first_name;
+        }
+        if (empty($order->customer_phone) && $order->customer) {
+            $order->customer_phone = $order->customer->phone_number;
+        }
 
         return response()->json($order);
     }
 
-    // ... Các hàm getOrderProducts, destroy, deleteOrderProducts giữ nguyên như cũ
+    // 3. CẬP NHẬT ĐƠN HÀNG
+    // Route: PUT /api/admin/orders/{id}
+    public function update(Request $request, $id)
+    {
+        $order = Order::find($id);
+
+        if (!$order) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        // Validate dữ liệu cơ bản
+        $request->validate([
+            'status' => 'required',
+        ]);
+
+        // Cập nhật các trường cho phép
+        $order->status = $request->status;
+        $order->note = $request->note; // Ghi chú đơn hàng
+        
+        // Cập nhật thông tin giao hàng nếu có gửi lên
+        if ($request->has('shipping_address')) {
+            $order->shipping_address = $request->shipping_address;
+        }
+        if ($request->has('shipping_city')) {
+            $order->shipping_city = $request->shipping_city;
+        }
+        
+        // Cập nhật thông tin khách (tùy chọn, thường ít khi sửa tên khách ở đơn hàng)
+        if ($request->has('customer_name')) {
+            $order->customer_name = $request->customer_name;
+        }
+        if ($request->has('customer_phone')) {
+            $order->customer_phone = $request->customer_phone;
+        }
+
+        $order->save();
+
+        return response()->json(['message' => 'Update successful', 'order' => $order]);
+    }
+
+    // 4. LẤY SẢN PHẨM TRONG ĐƠN (QUAN TRỌNG)
+    // Route: GET /api/admin/order-product/{id}
     public function getOrderProducts($orderId)
     {
-        $items = OrderItem::with('product')->where('order_id', $orderId)->get();
+        // Load 'product' để FE lấy được tên, ảnh, slug...
+        $items = OrderItem::with('product')
+            ->where('order_id', $orderId)
+            ->get();
+
         return response()->json($items);
     }
 
+    // 5. XÓA ĐƠN HÀNG
+    // Route: DELETE /api/admin/orders/{id}
     public function destroy($id)
     {
-        Order::destroy($id);
-        return response()->json(null, 204);
+        $order = Order::find($id);
+        if ($order) {
+            // Xóa các item con trước (nếu chưa thiết lập cascade delete trong DB)
+            OrderItem::where('order_id', $id)->delete();
+            $order->delete();
+            return response()->json(['message' => 'Deleted successfully'], 200);
+        }
+        return response()->json(['message' => 'Not found'], 404);
     }
-    
-    public function deleteOrderProducts($id) {
-         OrderItem::where('order_id', $id)->delete();
-         return response()->json(null, 204);
+
+    // 6. XÓA SẢN PHẨM TRONG ĐƠN (Dùng khi FE gọi xóa item trước khi xóa order)
+    // Route: DELETE /api/admin/order-product/{orderId}
+    public function deleteOrderProducts($orderId)
+    {
+        OrderItem::where('order_id', $orderId)->delete();
+        return response()->json(['message' => 'Order items deleted'], 200);
     }
 }

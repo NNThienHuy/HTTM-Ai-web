@@ -74,9 +74,9 @@ Route::middleware(['auth:sanctum', 'isadmin'])->group(function () {
     
     // 5. Orders (Quản lý đơn hàng bởi Admin)
     Route::get('/admin/orders', [AdminOrderController::class, 'index']); 
-    Route::get('/admin/orders/{order}', [AdminOrderController::class, 'show']);
-    Route::put('/admin/orders/{order}', [AdminOrderController::class, 'update']);
-    Route::delete('/admin/orders/{order}', [AdminOrderController::class, 'destroy']);
+    Route::get('/admin/orders/{id}', [AdminOrderController::class, 'show']);
+    Route::put('/admin/orders/{id}', [AdminOrderController::class, 'update']);
+    Route::delete('/admin/orders/{id}', [AdminOrderController::class, 'destroy']);
     
     // Route lấy sản phẩm trong đơn (cho Admin)
     Route::get('/admin/order-product/{orderId}', [AdminOrderController::class, 'getOrderProducts']);
