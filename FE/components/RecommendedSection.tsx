@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import apiClient from "@/lib/api";
 import { Product } from "@/lib/types";
@@ -21,31 +21,7 @@ export default function RecommendedSection() {
   const { status } = useSession();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-
   const scrollerRef = useRef<HTMLDivElement | null>(null);
-  const rafRef = useRef<number | null>(null);
-
-
-  const [canLeft, setCanLeft] = useState(false);
-  const [canRight, setCanRight] = useState(false);
-
-  const updateNavState = useCallback(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-
-    const max = el.scrollWidth - el.clientWidth;
-
-    const left = el.scrollLeft;
-    const EPS = 2;
-
-    setCanLeft(left > EPS);
-    setCanRight(left < max - EPS);
-  }, []);
-
-  const scheduleUpdate = useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => updateNavState());
-  }, [updateNavState]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -59,6 +35,7 @@ export default function RecommendedSection() {
     (async () => {
       try {
         setLoading(true);
+
         const res = await apiClient.get("/api/recommendations/personalized", {
           cache: "no-store",
         });
@@ -100,10 +77,7 @@ export default function RecommendedSection() {
     };
   }, [status]);
 
-  const showNav = useMemo(
-    () => !loading && products.length > 5,
-    [loading, products.length]
-  );
+  const showNav = useMemo(() => !loading && products.length > 5, [loading, products.length]);
 
   const getCardWidth = () => {
     const el = scrollerRef.current;
@@ -123,28 +97,7 @@ export default function RecommendedSection() {
       left: dir === "left" ? -amount : amount,
       behavior: "smooth",
     });
-
-    scheduleUpdate();
   };
-
-  useEffect(() => {
-    const el = scrollerRef.current;
-    if (!el) return;
-
-    scheduleUpdate();
-
-    const onScroll = () => scheduleUpdate();
-    el.addEventListener("scroll", onScroll, { passive: true });
-
-    const onResize = () => scheduleUpdate();
-    window.addEventListener("resize", onResize);
-
-    return () => {
-      el.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onResize);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, [products.length, loading, scheduleUpdate]);
 
   if (!loading && products.length === 0) return null;
 
@@ -156,7 +109,7 @@ export default function RecommendedSection() {
         <div className="text-center py-10">Đang tải gợi ý...</div>
       ) : (
         <div className="relative mt-8">
-          {showNav && canLeft && (
+          {showNav && (
             <button
               type="button"
               aria-label="Previous"
@@ -169,7 +122,7 @@ export default function RecommendedSection() {
             </button>
           )}
 
-          {showNav && canRight && (
+          {showNav && (
             <button
               type="button"
               aria-label="Next"
