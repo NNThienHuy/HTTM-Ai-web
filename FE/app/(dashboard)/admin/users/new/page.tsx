@@ -7,66 +7,66 @@ import { sanitizeFormData } from "@/lib/form-sanitize";
 import { apiClient } from "@/lib/api";
 
 const DashboardCreateNewUser = () => {
+  // 1. Cập nhật State: Thêm 'name' và sửa default role thành 'customer'
   const [userInput, setUserInput] = useState<{
+    name: string;
     email: string;
     password: string;
     role: string;
   }>({
+    name: "",
     email: "",
     password: "",
-    role: "user",
+    role: "customer", // Backend chỉ nhận 'admin' hoặc 'customer'
   });
 
   const addNewUser = async () => {
-    if (userInput.email === "" || userInput.password === "") {
-      toast.error("You must enter all input values to add a user");
+    // Validate cơ bản
+    if (userInput.name === "" || userInput.email === "" || userInput.password === "") {
+      toast.error("Vui lòng điền đầy đủ thông tin (Tên, Email, Mật khẩu)");
       return;
     }
 
-    // Sanitize form data before sending to API
+    if (!isValidEmailAddressFormat(userInput.email)) {
+      toast.error("Định dạng Email không hợp lệ");
+      return;
+    }
+
+    if (userInput.password.length <= 6) { // Backend yêu cầu min:6
+      toast.error("Mật khẩu phải dài hơn 6 ký tự");
+      return;
+    }
+
+    // Sanitize dữ liệu
     const sanitizedUserInput = sanitizeFormData(userInput);
 
-    if (
-      userInput.email.length > 3 &&
-      userInput.role.length > 0 &&
-      userInput.password.length > 0
-    ) {
-      if (!isValidEmailAddressFormat(userInput.email)) {
-        toast.error("You entered invalid email address format");
-        return;
-      }
+    try {
+      // 2. Gọi API: Gửi đúng cấu trúc JSON object mà Axios/ApiClient mong đợi
+      // Backend mong đợi: { name, email, password, role }
+      const response = await apiClient.post("/api/admin/users", {
+        name: sanitizedUserInput.name,
+        email: sanitizedUserInput.email,
+        password: sanitizedUserInput.password,
+        role: sanitizedUserInput.role,
+      });
 
-      if (userInput.password.length > 7) {
-        const requestOptions: any = {
-          method: "post",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sanitizedUserInput),
-        };
-        apiClient.post(`/api/admin/users`, requestOptions)
-          .then((response) => {
-            if(response.status === 201){
-              return response.json();
-
-            }else{
-              
-              throw Error("Error while creating user");
-            }
-          })
-          .then((data) => {
-            toast.success("User added successfully");
-            setUserInput({
-              email: "",
-              password: "",
-              role: "user",
-            });
-          }).catch(error => {
-            toast.error("Error while creating user");
-          });
-      } else {
-        toast.error("Password must be longer than 7 characters");
+      // Nếu apiClient cấu hình trả về data trực tiếp thì bỏ qua bước check status, 
+      // nhưng nếu trả về full response object thì check status như sau:
+      if (response.status === 201 || response.data?.success) {
+        toast.success("Tạo tài khoản thành công!");
+        // Reset form
+        setUserInput({
+          name: "",
+          email: "",
+          password: "",
+          role: "customer",
+        });
       }
-    } else {
-      toast.error("You must enter all input values to add a user");
+    } catch (error: any) {
+      // Xử lý lỗi từ Backend trả về (ví dụ: Email trùng)
+      const message = error?.response?.data?.message || "Lỗi khi tạo tài khoản";
+      toast.error(message);
+      console.error(error);
     }
   };
 
@@ -75,6 +75,25 @@ const DashboardCreateNewUser = () => {
       <DashboardSidebar />
       <div className="flex flex-col gap-y-7 xl:pl-5 max-xl:px-5 w-full">
         <h1 className="text-3xl font-semibold">Add new user</h1>
+        
+        {/* 3. Thêm Input Field cho Name */}
+        <div>
+          <label className="form-control w-full max-w-xs">
+            <div className="label">
+              <span className="label-text">Full Name:</span>
+            </div>
+            <input
+              type="text"
+              className="input input-bordered w-full max-w-xs"
+              value={userInput.name}
+              placeholder=""
+              onChange={(e) =>
+                setUserInput({ ...userInput, name: e.target.value })
+              }
+            />
+          </label>
+        </div>
+
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
@@ -114,13 +133,13 @@ const DashboardCreateNewUser = () => {
             </div>
             <select
               className="select select-bordered"
-              defaultValue={userInput.role}
+              value={userInput.role} // Dùng value để control component
               onChange={(e) =>
                 setUserInput({ ...userInput, role: e.target.value })
               }
             >
-              <option value="admin">admin</option>
               <option value="customer">customer</option>
+              <option value="admin">admin</option>
             </select>
           </label>
         </div>
