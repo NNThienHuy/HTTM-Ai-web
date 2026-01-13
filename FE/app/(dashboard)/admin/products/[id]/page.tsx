@@ -1,16 +1,17 @@
 "use client";
-import { CustomButton, DashboardSidebar, SectionTitle } from "@/components";
+
+import { DashboardSidebar } from "@/components";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState, use } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import {
   convertCategoryNameToURLFriendly as convertSlugToURLFriendly,
   formatCategoryName,
 } from "../../../../../utils/categoryFormating";
-import { nanoid } from "nanoid";
 import apiClient from "@/lib/api";
 import config from "@/lib/config";
+
 interface Product {
   id?: string;
   title: string;
@@ -34,148 +35,173 @@ interface OtherImages {
 }
 
 interface DashboardProductDetailsProps {
-  params: Promise<{ id: string }>;
+  // ✅ KHÔNG Promise + KHÔNG use(params) trong client
+  params: { id: string };
 }
 
-const DashboardProductDetails = ({
-  params,
-}: DashboardProductDetailsProps) => {
-  const resolvedParams = use(params);
-  const id = resolvedParams.id;
-  
-  const [product, setProduct] = useState<Product>();
-  const [categories, setCategories] = useState<Category[]>();
-  const [otherImages, setOtherImages] = useState<OtherImages[]>([]);
-  const router = useRouter();
+const EMPTY_PRODUCT: Product = {
+  title: "",
+  slug: "",
+  price: 0,
+  manufacturer: "",
+  description: "",
+  mainImage: "",
+  inStock: 1,
+  categoryId: "",
+};
 
-  const deleteProduct = async () => {
-    const requestOptions = {
-      method: "DELETE",
-    };
-    apiClient.delete(`/api/products/${id}`, requestOptions)
-      .then((response) => {
-        if (response.status !== 204) {
-          if (response.status === 400) {
-            toast.error(
-              "Cannot delete the product because of foreign key constraint"
-            );
-          } else {
-            throw Error("There was an error while deleting product");
-          }
-        } else {
-          toast.success("Product deleted successfully");
-          router.push("/admin/products");
-        }
-      })
-      .catch((error) => {
-        toast.error("There was an error while deleting product");
-      });
-  };
-  const buildImgSrc = (src?: string) => {
+const buildImgSrc = (src?: string) => {
   if (!src || src === "") return "/product_placeholder.jpg";
-
   if (src.startsWith("http://") || src.startsWith("https://")) return src;
 
   const baseUrl = (config.apiBaseUrl || "http://127.0.0.1:8000").replace(/\/+$/, "");
   const clean = src.replace(/^\/+/, "");
 
-  // Thêm kiểm tra cho 'images/' và 'storage/'
   if (clean.startsWith("storage/") || clean.startsWith("images/")) {
-      return `${baseUrl}/${clean}`;
+    return `${baseUrl}/${clean}`;
   }
-
   return `/${clean}`;
 };
+
+export default function DashboardProductDetails({ params }: DashboardProductDetailsProps) {
+  const id = params.id;
+
+  // ✅ init object sẵn để không bị undefined
+  const [product, setProduct] = useState<Product>(EMPTY_PRODUCT);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [otherImages, setOtherImages] = useState<OtherImages[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const router = useRouter();
+
+  const canUpdate = useMemo(() => {
+    return (
+      product.title.trim() &&
+      product.slug.trim() &&
+      Number.isFinite(product.price) &&
+      product.manufacturer.trim() &&
+      product.description.trim()
+    );
+  }, [product]);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await apiClient.get("/api/categories");
+      if (!res.ok) throw new Error("fetch categories failed");
+      const data = (await res.json()) as Category[];
+      setCategories(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error("Không tải được danh mục");
+    }
+  };
+
+  const fetchProductData = async () => {
+    try {
+      const res = await apiClient.get(`/api/products/${id}`);
+      if (!res.ok) throw new Error("fetch product failed");
+      const data = (await res.json()) as Product;
+
+      setProduct({ ...EMPTY_PRODUCT, ...data });
+    } catch {
+      toast.error("Không tải được sản phẩm");
+    }
+
+    try {
+      const imagesRes = await apiClient.get(`/api/images/${id}`, { cache: "no-store" });
+      if (!imagesRes.ok) throw new Error("fetch images failed");
+      const images = (await imagesRes.json()) as OtherImages[];
+      setOtherImages(Array.isArray(images) ? images : []);
+    } catch {
+      setOtherImages([]);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+    fetchProductData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const deleteProduct = async () => {
+    try {
+      const res = await apiClient.delete(`/api/products/${id}`, { method: "DELETE" });
+
+      if (res.status !== 204) {
+        if (res.status === 400) {
+          toast.error("Cannot delete the product because of foreign key constraint");
+          return;
+        }
+        toast.error("There was an error while deleting product");
+        return;
+      }
+
+      toast.success("Product deleted successfully");
+      router.push("/admin/products");
+    } catch {
+      toast.error("There was an error while deleting product");
+    }
+  };
+
   const updateProduct = async () => {
-    if (
-      product?.title === "" ||
-      product?.slug === "" ||
-      product?.price.toString() === "" ||
-      product?.manufacturer === "" ||
-      product?.description === ""
-    ) {
+    if (!canUpdate) {
       toast.error("You need to enter values in input fields");
       return;
     }
 
-    const requestOptions = {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(product),
-    };
-    apiClient.put(`/api/products/${id}`, requestOptions)
-      .then((response) => {
-        if (response.status === 200) {
-          return response.json();
-        } else {
-          throw Error("There was an error while updating product");
-        }
-      })
-      .then((data) => toast.success("Product successfully updated"))
-      .catch((error) => {
-        toast.error("There was an error while updating product");
+    setIsSaving(true);
+    try {
+      const res = await apiClient.put(`/api/products/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(product),
       });
+
+      if (!res.ok) throw new Error("update failed");
+      toast.success("Product successfully updated");
+    } catch {
+      toast.error("There was an error while updating product");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const uploadFile = async (file: any) => {
+  const uploadMainImage = async (file: File) => {
     const formData = new FormData();
     formData.append("uploadedFile", file);
 
+    setIsUploading(true);
     try {
-      const response = await apiClient.post("/api/main-image", {
+      const res = await apiClient.post("/api/main-image", {
         method: "POST",
         body: formData,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-      } else {
+      if (!res.ok) {
         toast.error("File upload unsuccessful.");
+        return;
       }
-    } catch (error) {
-      console.error("There was an error while during request sending:", error);
+
+      // ✅ lấy path/url BE trả về, fallback file.name
+      const data = await res.json().catch(() => null);
+      const uploadedPath = data?.path || data?.url || file.name;
+
+      setProduct((prev) => ({ ...prev, mainImage: uploadedPath }));
+      toast.success("Upload ảnh OK");
+    } catch {
       toast.error("There was an error during request sending");
+    } finally {
+      setIsUploading(false);
     }
   };
-
-  const fetchCategories = async () => {
-    apiClient.get(`/api/categories`)
-      .then((res) => {
-        return res.json();
-      })
-      .then((data) => {
-        setCategories(data);
-      });
-  };
-
-  useEffect(() => {
-    const fetchProductData = async () => {
-      apiClient.get(`/api/products/${id}`)
-        .then((res) => {
-          return res.json();
-        })
-        .then((data) => {
-          setProduct(data);
-        });
-
-      const imagesData = await apiClient.get(`/api/images/${id}`, {
-        cache: "no-store",
-      });
-      const images = await imagesData.json();
-      setOtherImages((currentImages) => images);
-    };
-
-    fetchCategories();
-    fetchProductData();
-  }, [id]);
 
   return (
     <div className="bg-white flex justify-start max-w-screen-2xl mx-auto xl:h-full max-xl:flex-col max-xl:gap-y-5">
       <DashboardSidebar />
+
       <div className="flex flex-col gap-y-7 xl:ml-5 w-full max-xl:px-5">
         <h1 className="text-3xl font-semibold">Chi tiết sản phẩm</h1>
-        {/* Product name input div - start */}
-        
+
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
@@ -184,15 +210,11 @@ const DashboardProductDetails = ({
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={product?.title || ""}
-              onChange={(e) =>
-                setProduct({ ...product!, title: e.target.value })
-              }
+              value={product.title}
+              onChange={(e) => setProduct((p) => ({ ...p, title: e.target.value }))}
             />
           </label>
         </div>
-        {/* Product name input div - end */}
-        {/* Product price input div - start */}
 
         <div>
           <label className="form-control w-full max-w-xs">
@@ -202,15 +224,12 @@ const DashboardProductDetails = ({
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={product?.price || ""}
-              onChange={(e) =>
-                setProduct({ ...product!, price: Number(e.target.value) })
-              }
+              value={Number.isFinite(product.price) ? product.price : ""}
+              onChange={(e) => setProduct((p) => ({ ...p, price: Number(e.target.value) }))}
             />
           </label>
         </div>
-        {/* Product price input div - end */}
-        {/* Product manufacturer input div - start */}
+
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
@@ -219,15 +238,11 @@ const DashboardProductDetails = ({
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={product?.manufacturer || ""}
-              onChange={(e) =>
-                setProduct({ ...product!, manufacturer: e.target.value })
-              }
+              value={product.manufacturer}
+              onChange={(e) => setProduct((p) => ({ ...p, manufacturer: e.target.value }))}
             />
           </label>
         </div>
-        {/* Product manufacturer input div - end */}
-        {/* Product slug input div - start */}
 
         <div>
           <label className="form-control w-full max-w-xs">
@@ -237,18 +252,13 @@ const DashboardProductDetails = ({
             <input
               type="text"
               className="input input-bordered w-full max-w-xs"
-              value={product?.slug ? convertSlugToURLFriendly(product?.slug) : ""}
+              value={product.slug ? convertSlugToURLFriendly(product.slug) : ""}
               onChange={(e) =>
-                setProduct({
-                  ...product!,
-                  slug: convertSlugToURLFriendly(e.target.value),
-                })
+                setProduct((p) => ({ ...p, slug: convertSlugToURLFriendly(e.target.value) }))
               }
             />
           </label>
         </div>
-        {/* Product slug input div - end */}
-        {/* Product inStock select input div - start */}
 
         <div>
           <label className="form-control w-full max-w-xs">
@@ -257,18 +267,15 @@ const DashboardProductDetails = ({
             </div>
             <select
               className="select select-bordered"
-              value={product?.inStock ?? 1}
-              onChange={(e) => {
-                setProduct({ ...product!, inStock: Number(e.target.value) });
-              }}
+              value={product.inStock ?? 1}
+              onChange={(e) => setProduct((p) => ({ ...p, inStock: Number(e.target.value) }))}
             >
               <option value={1}>Yes</option>
               <option value={0}>No</option>
             </select>
           </label>
         </div>
-        {/* Product inStock select input div - end */}
-        {/* Product category select input div - start */}
+
         <div>
           <label className="form-control w-full max-w-xs">
             <div className="label">
@@ -276,67 +283,58 @@ const DashboardProductDetails = ({
             </div>
             <select
               className="select select-bordered"
-              value={product?.categoryId || ""}
-              onChange={(e) =>
-                setProduct({
-                  ...product!,
-                  categoryId: e.target.value,
-                })
-              }
+              value={product.categoryId ?? ""}
+              onChange={(e) => setProduct((p) => ({ ...p, categoryId: e.target.value }))}
             >
-              {categories &&
-                categories.map((category: Category) => (
-                  <option key={category?.id} value={category?.id}>
-                    {formatCategoryName(category?.name)}
-                  </option>
-                ))}
+              <option value="" disabled>
+                -- Chọn danh mục --
+              </option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {formatCategoryName(c.name)}
+                </option>
+              ))}
             </select>
           </label>
         </div>
-        {/* Product category select input div - end */}
 
-        {/* Main image file upload div - start */}
         <div>
           <input
             type="file"
+            disabled={isUploading}
             className="file-input file-input-bordered file-input-lg w-full max-w-sm"
             onChange={(e) => {
-              // @ts-ignore
-              const selectedFile = e.target.files[0];
-
-              if (selectedFile) {
-                uploadFile(selectedFile);
-                setProduct({ ...product!, mainImage: selectedFile.name });
-              }
+              const f = e.target.files?.[0];
+              if (f) uploadMainImage(f);
             }}
           />
-          {product?.mainImage && (
+
+          {product.mainImage ? (
             <Image
-              src={`/` + product?.mainImage}
-              alt={product?.title}
+              src={buildImgSrc(product.mainImage)}
+              alt={product.title || "product"}
               className="w-auto h-auto mt-2"
               width={100}
               height={100}
+              unoptimized
             />
-          )}
+          ) : null}
         </div>
-        {/* Main image file upload div - end */}
-        {/* Other images file upload div - start */}
+
         <div className="flex gap-x-1">
-          {otherImages &&
-            otherImages.map((image) => (
-              <Image
-                src={`/${image.image}`}
-                key={nanoid()}
-                alt="product image"
-                width={100}
-                height={100}
-                className="w-auto h-auto"
-              />
-            ))}
+          {otherImages.map((img) => (
+            <Image
+              key={img.id ?? img.image}
+              src={buildImgSrc(img.image)}
+              alt="product image"
+              width={100}
+              height={100}
+              className="w-auto h-auto"
+              unoptimized
+            />
+          ))}
         </div>
-        {/* Other images file upload div - end */}
-        {/* Product description div - start */}
+
         <div>
           <label className="form-control">
             <div className="label">
@@ -344,38 +342,36 @@ const DashboardProductDetails = ({
             </div>
             <textarea
               className="textarea textarea-bordered h-24"
-              value={product?.description || ""}
-              onChange={(e) =>
-                setProduct({ ...product!, description: e.target.value })
-              }
-            ></textarea>
+              value={product.description}
+              onChange={(e) => setProduct((p) => ({ ...p, description: e.target.value }))}
+            />
           </label>
         </div>
-        {/* Product description div - end */}
-        {/* Action buttons div - start */}
+
         <div className="flex gap-x-2 max-sm:flex-col">
           <button
             type="button"
             onClick={updateProduct}
-            className="uppercase bg-blue-500 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 hover:text-white focus:outline-none focus:ring-2"
+            disabled={!canUpdate || isSaving}
+            className="uppercase bg-blue-500 px-10 py-5 text-lg border border-gray-300 font-bold text-white shadow-sm hover:bg-blue-600 disabled:opacity-50"
           >
-            Cập nhật sản phẩm
+            {isSaving ? "Đang cập nhật..." : "Cập nhật sản phẩm"}
           </button>
+
           <button
             type="button"
-            className="uppercase bg-red-600 px-10 py-5 text-lg border border-black border-gray-300 font-bold text-white shadow-sm hover:bg-red-700 hover:text-white focus:outline-none focus:ring-2"
             onClick={deleteProduct}
+            className="uppercase bg-red-600 px-10 py-5 text-lg border border-gray-300 font-bold text-white shadow-sm hover:bg-red-700"
           >
             Xóa sản phẩm
           </button>
         </div>
-        {/* Action buttons div - end */}
+
         <p className="text-xl max-sm:text-lg text-error">
-          Để xóa sản phẩm, trước tiên bạn cần xóa tất cả các bản ghi của sản phẩm đó trong đơn hàng (bảng sản phẩm đơn hàng của khách hàng).
+          Để xóa sản phẩm, trước tiên bạn cần xóa tất cả các bản ghi của sản phẩm đó
+          trong đơn hàng (bảng sản phẩm đơn hàng của khách hàng).
         </p>
       </div>
     </div>
   );
-};
-
-export default DashboardProductDetails;
+}
