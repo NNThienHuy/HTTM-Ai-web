@@ -22,7 +22,7 @@ const DashboardUsers = () => {
     const fetchUsers = async () => {
       try {
         setLoading(true);
-        const res = await apiClient.get("/api/users", { cache: "no-store" });
+        const res = await apiClient.get("/api/admin/users", { cache: "no-store" });
         if (!res.ok) throw new Error("Fetch users failed");
         
         const data = await res.json();
@@ -47,7 +47,7 @@ const DashboardUsers = () => {
 
     try {
       setDeletingId(id);
-      const res = await apiClient.delete(`/api/users/${id}`);
+      const res = await apiClient.delete(`admin/users/${id}`);
       
       if (res.status === 204 || res.ok) {
         setUsers((prev) => prev.filter((u) => u.id !== id));

@@ -1,14 +1,8 @@
-"use client";
-import { AdminOrders, DashboardSidebar } from "@/components";
 import React from "react";
+import OrdersTable from "@/components/admin/OrdersTable";
+import { getAdminOrders } from "@/lib/adminOrders";
 
-const DashboardOrdersPage = () => {
-  return (
-    <div className="bg-white flex justify-start max-w-screen-2xl mx-auto h-full max-xl:flex-col max-xl:h-fit">
-      <DashboardSidebar />
-      <AdminOrders />
-    </div>
-  );
-};
-
-export default DashboardOrdersPage;
+export default async function Page() {
+  const orders = await getAdminOrders();
+  return <OrdersTable initialOrders={orders} />;
+}
