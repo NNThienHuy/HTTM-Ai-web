@@ -70,12 +70,11 @@ class CartController extends Controller
             ]);
         }
 
-        // Record interaction - XÓA Str::uuid()
         UserProductInteraction::create([
             'customer_id' => $customer->customer_id,
             'product_id' => $validated['product_id'],
             'interaction_type' => 'cart',
-            'interaction_value' => 2.0
+            'interaction_value' => 3.0
         ]);
 
         $cart->calculateTotal();
