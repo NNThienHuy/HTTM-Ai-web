@@ -105,7 +105,7 @@ export default async function SingleProductPage({
 
             <div className="flex items-center gap-x-4">
               <p className="text-3xl font-bold text-blue-600">
-                {Number(uiProduct.price).toLocaleString("vi-VN")} đ
+                {Number(uiProduct.price).toLocaleString("vi-VN")} VND
               </p>
 
               <span

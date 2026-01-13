@@ -5,6 +5,7 @@ import ProductItemRating from "./ProductItemRating";
 import { sanitize } from "@/lib/sanitize";
 import { Product } from "@/lib/types";
 import config from "@/lib/config";
+import { formatVND } from "@/lib/format";
 // const buildImgSrc = (src?: string) => {
 //   if (!src) return "/product_placeholder.jpg";
 //   if (src.startsWith("http://") || src.startsWith("https://")) return src;
@@ -66,8 +67,8 @@ const ProductItem = ({ product, color }: { product: Product; color: string }) =>
 
         <div className="flex items-center justify-between">
           <p className={color === "black" ? "text-gray-900 font-bold" : "text-white font-bold"}>
-            ${Number(product?.price ?? 0).toLocaleString()}
-          </p>
+            {formatVND(product?.price ?? 0)}
+            </p>
         </div>
 
         <Link
