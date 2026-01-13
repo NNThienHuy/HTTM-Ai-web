@@ -8,7 +8,7 @@ import ProductItem from "./ProductItem";
 import SectionTitle from "./SectionTitle";
 
 const GAP_PX = 16; 
-const STEP = 3;   
+const STEP = 3;    
 
 const asArray = (json: any): any[] => {
   if (Array.isArray(json)) return json;
@@ -24,6 +24,7 @@ export default function RecommendedSection() {
 
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
+
 
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
@@ -130,7 +131,6 @@ export default function RecommendedSection() {
     const el = scrollerRef.current;
     if (!el) return;
 
-    // lần đầu
     scheduleUpdate();
 
     const onScroll = () => scheduleUpdate();
@@ -150,11 +150,7 @@ export default function RecommendedSection() {
 
   return (
     <section className="py-10 max-w-screen-2xl mx-auto px-5">
-<<<<<<< HEAD
-      {/* path ở SectionTitle thường là URL, nếu bạn muốn subtitle thì sửa component SectionTitle */}
-=======
->>>>>>> 305e203585931278ff1427de60d53b22c958118f
-      <SectionTitle title="Gợi ý riêng cho bạn" path="" />
+      <SectionTitle title="Gợi ý riêng cho bạn" path="/shop" />
 
       {loading ? (
         <div className="text-center py-10">Đang tải gợi ý...</div>
