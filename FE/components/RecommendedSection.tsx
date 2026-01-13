@@ -7,8 +7,8 @@ import { Product } from "@/lib/types";
 import ProductItem from "./ProductItem";
 import SectionTitle from "./SectionTitle";
 
-const GAP_PX = 16; // gap-4
-const STEP = 3;    // bấm 1 lần trượt 3 card
+const GAP_PX = 16; 
+const STEP = 3;   
 
 const asArray = (json: any): any[] => {
   if (Array.isArray(json)) return json;
@@ -25,7 +25,6 @@ export default function RecommendedSection() {
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
 
-  // ✅ state điều khiển nút
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
 
@@ -33,10 +32,8 @@ export default function RecommendedSection() {
     const el = scrollerRef.current;
     if (!el) return;
 
-    // max scrollLeft
     const max = el.scrollWidth - el.clientWidth;
 
-    // chống sai số float (Safari/Chrome)
     const left = el.scrollLeft;
     const EPS = 2;
 
@@ -88,7 +85,7 @@ export default function RecommendedSection() {
           } as Product;
         });
 
-        if (mounted) setProducts(mappedList.slice(0, 8)); // ✅ tổng 8
+        if (mounted) setProducts(mappedList.slice(0, 8)); 
       } catch (e) {
         console.error("Lỗi khi tải gợi ý:", e);
         if (mounted) setProducts([]);
@@ -102,7 +99,6 @@ export default function RecommendedSection() {
     };
   }, [status]);
 
-  // ✅ chỉ cần nav khi > 5 sản phẩm (desktop show 5)
   const showNav = useMemo(
     () => !loading && products.length > 5,
     [loading, products.length]
@@ -127,11 +123,9 @@ export default function RecommendedSection() {
       behavior: "smooth",
     });
 
-    // sau khi scroll -> cập nhật nút
     scheduleUpdate();
   };
 
-  // ✅ gắn listener scroll + resize để update nút theo scrollLeft
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -162,7 +156,6 @@ export default function RecommendedSection() {
         <div className="text-center py-10">Đang tải gợi ý...</div>
       ) : (
         <div className="relative mt-8">
-          {/* ✅ ẨN/HIỆN NÚT theo scrollLeft */}
           {showNav && canLeft && (
             <button
               type="button"
