@@ -10,59 +10,85 @@ type AdminOrderUI = {
   country: string;
   status: string;
   total: number;
-  dateTime: string; 
+  dateTime: string;
 };
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState<AdminOrderUI[]>([]);
-  const [deletingId, setDeletingId] = useState<number | string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>("");
 
   const fetchOrders = async () => {
-    // ✅ Admin list endpoint (đúng route api.php)
-    const response = await apiClient.get("/api/admin/orders"); // :contentReference[oaicite:10]{index=10}
-    const data = await response.json();
+    setLoading(true);
+    setError("");
 
-    // ✅ BE thường trả array; nếu lỡ có wrap {orders: []} thì vẫn ăn
-    const raw = Array.isArray(data) ? data : data?.orders ?? [];
+    try {
+      // ✅ admin endpoint (đúng route)
+      const res = await apiClient.get("/api/admin/orders"); // :contentReference[oaicite:4]{index=4}
+      const data = await res.json();
 
-    // ✅ map đúng field từ Order model (order_id, customer_name, shipping_city, total_amount, created_at)
-    const mapped: AdminOrderUI[] = raw.map((o: any) => ({
-      id: o.order_id ?? o.id, // PK là order_id :contentReference[oaicite:11]{index=11}
-      name: o.customer_name ?? o.name ?? "",
-      country: o.shipping_city ?? o.shipping_district ?? "",
-      status: o.status ?? "",
-      total: Number(o.total_amount ?? o.total ?? 0),
-      dateTime: o.created_at ?? o.order_date ?? o.dateTime ?? new Date().toISOString(),
-    }));
+      if (!res.ok) {
+        // nếu 401/403 thì sẽ rơi vào đây
+        setError(data?.message || `Fetch failed (${res.status})`);
+        setOrders([]);
+        return;
+      }
 
-    setOrders(mapped);
+      // ✅ BE có thể trả mảng trực tiếp (phổ biến nhất)
+      const raw = Array.isArray(data) ? data : data?.orders ?? [];
+
+      // ✅ map field từ Order model -> UI shape của AdminOrders.tsx
+      const mapped: AdminOrderUI[] = raw.map((o: any) => ({
+        id: o.order_id ?? o.id, // PK là order_id :contentReference[oaicite:5]{index=5}
+        name: o.customer_name ?? o.name ?? "",
+        country: o.shipping_city ?? o.shipping_district ?? "",
+        status: o.status ?? "",
+        total: Number(o.total_amount ?? o.total ?? 0),
+        dateTime: o.created_at ?? o.order_date ?? o.dateTime ?? new Date().toISOString(),
+      }));
+
+      setOrders(mapped);
+    } catch (e: any) {
+      setError(e?.message || "Network error");
+      setOrders([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: number | string) => {
+    const ok = confirm(`Delete order #${id}?`);
+    if (!ok) return;
+
+    const res = await apiClient.delete(`/api/admin/orders/${id}`); // :contentReference[oaicite:6]{index=6}
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      alert(data?.message || `Delete failed (${res.status})`);
+      return;
+    }
+    setOrders((prev) => prev.filter((x) => x.id !== id));
   };
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  const handleDelete = async (id: number | string) => {
-    const ok = confirm(`Delete order #${id}?`);
-    if (!ok) return;
-
-    setDeletingId(id);
-    try {
-      // ✅ Admin delete endpoint (đúng route api.php)
-      const res = await apiClient.delete(`/api/admin/orders/${id}`); // :contentReference[oaicite:12]{index=12}
-      if (!res.ok) {
-        alert("Delete failed. Check API / permission / token.");
-        return;
-      }
-      setOrders((prev) => prev.filter((x) => x.id !== id));
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  if (loading) return <div className="xl:ml-5 w-full max-xl:mt-5">Loading...</div>;
 
   return (
     <div className="xl:ml-5 w-full max-xl:mt-5 ">
       <h1 className="text-3xl font-semibold text-center mb-5">All orders</h1>
+
+      {error && (
+        <div className="mb-4 p-3 rounded bg-red-50 text-red-700 border border-red-200">
+          {error}
+        </div>
+      )}
+
+      {!error && orders.length === 0 && (
+        <div className="py-10 text-center text-gray-500">Chưa có đơn hàng.</div>
+      )}
+
       <div className="overflow-x-auto">
         <table className="table table-md table-pin-cols">
           <thead>
@@ -82,58 +108,51 @@ const AdminOrders = () => {
           </thead>
 
           <tbody>
-            {orders && orders.length > 0 &&
-              orders.map((order) => (
-                <tr key={String(order.id)}>
-                  <th>
-                    <label>
-                      <input type="checkbox" className="checkbox" />
-                    </label>
-                  </th>
+            {orders.map((order) => (
+              <tr key={String(order.id)}>
+                <th>
+                  <label>
+                    <input type="checkbox" className="checkbox" />
+                  </label>
+                </th>
 
-                  <td>
-                    <p className="font-bold">#{order.id}</p>
-                  </td>
+                <td>
+                  <p className="font-bold">#{order.id}</p>
+                </td>
 
-                  <td>
-                    <div className="flex items-center gap-5">
-                      <div>
-                        <div className="font-bold">{order.name}</div>
-                        <div className="text-sm opacity-50">{order.country}</div>
-                      </div>
-                    </div>
-                  </td>
+                <td>
+                  <div className="font-bold">{order.name}</div>
+                  <div className="text-sm opacity-50">{order.country}</div>
+                </td>
 
-                  <td>
-                    <span className="badge badge-success text-white badge-sm">
-                      {order.status}
-                    </span>
-                  </td>
+                <td>
+                  <span className="badge badge-success text-white badge-sm">
+                    {order.status}
+                  </span>
+                </td>
 
-                  <td>
-                    <p>${order.total}</p>
-                  </td>
+                <td>
+                  <p>${order.total}</p>
+                </td>
 
-                  <td>{new Date(Date.parse(order.dateTime)).toDateString()}</td>
+                <td>{new Date(Date.parse(order.dateTime)).toDateString()}</td>
 
-                  <td className="flex gap-2">
-                    <Link
-                      href={`/admin/orders/${order.id}`}
-                      className="btn btn-ghost btn-xs"
-                    >
-                      details
-                    </Link>
-
-                    <button
-                      className="btn btn-error btn-xs text-white"
-                      disabled={deletingId === order.id}
-                      onClick={() => handleDelete(order.id)}
-                    >
-                      {deletingId === order.id ? "deleting..." : "delete"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                <td className="flex gap-2">
+                  <Link
+                    href={`/admin/orders/${order.id}`}
+                    className="btn btn-ghost btn-xs"
+                  >
+                    details
+                  </Link>
+                  <button
+                    className="btn btn-error btn-xs text-white"
+                    onClick={() => handleDelete(order.id)}
+                  >
+                    delete
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
 
           <tfoot>
