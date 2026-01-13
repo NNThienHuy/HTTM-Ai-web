@@ -109,7 +109,7 @@ const Filters = () => {
               })
             }
           />
-          <span>{`Giá cao nhất: $${inputCategory.priceFilter.value}`}</span>
+          <span>{`Giá cao nhất: VND${inputCategory.priceFilter.value}`}</span>
         </div>
       </div>
 
