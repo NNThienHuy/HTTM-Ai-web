@@ -1,6 +1,5 @@
 "use client";
 import { CustomButton, DashboardSidebar, SectionTitle } from "@/components";
-import SimilarProductsSlider from "@/components/SimilarProductsSlider";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState, use } from "react";
