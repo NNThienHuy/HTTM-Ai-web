@@ -14,28 +14,45 @@ use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
-    // 1. LẤY DANH SÁCH
-    public function index(Request $request)
-    {
-        $query = Account::with('customer');
+    // 1. LẤY DANH SÁCH (ALL ACCOUNTS)
+public function index(Request $request)
+{
+    $query = Account::with(['customer', 'admin']);
 
-        if ($request->has('q')) {
-            $search = $request->q;
-            $query->where(function($q) use ($search) {
-                $q->where('username', 'LIKE', "%{$search}%")
-                  ->orWhere('email', 'LIKE', "%{$search}%")
-                  ->orWhereHas('customer', function($sq) use ($search) {
-                      $sq->where('full_name', 'LIKE', "%{$search}%");
-                  });
-            });
-        }
-
-        // Trả về kết quả phân trang
-        return response()->json([
-            'success' => true,
-            'data' => $query->orderBy('created_at', 'desc')->paginate(10)
-        ]);
+    if ($request->filled('q')) {
+        $search = $request->q;
+        $query->where(function ($q) use ($search) {
+            $q->where('username', 'LIKE', "%{$search}%")
+              ->orWhere('email', 'LIKE', "%{$search}%")
+              ->orWhereHas('customer', function ($sq) use ($search) {
+                  $sq->where('full_name', 'LIKE', "%{$search}%");
+              })
+              ->orWhereHas('admin', function ($sq) use ($search) {
+                  $sq->where('full_name', 'LIKE', "%{$search}%");
+              });
+        });
     }
+
+    // Mặc định trả về toàn bộ (để FE admin hiển thị ALL accounts DB)
+    $accounts = $query->orderBy('created_at', 'desc')->get();
+
+    // Chuẩn hoá format cho FE: { id, email, role, ... }
+    $users = $accounts->map(function ($a) {
+        return [
+            'id' => $a->account_id ?? $a->id,
+            'email' => $a->email,
+            'role' => $a->user_type ?? ($a->admin ? 'admin' : 'customer'),
+            'username' => $a->username,
+            'name' => $a->customer->full_name ?? $a->admin->full_name ?? null,
+            'created_at' => optional($a->created_at)->toDateTimeString(),
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'data' => $users,
+    ]);
+}
 
     // 2. XEM CHI TIẾT
     public function show($id)
