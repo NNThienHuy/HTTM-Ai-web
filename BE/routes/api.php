@@ -14,7 +14,7 @@ use App\Http\Controllers\Api\Admin\MerchantController;
 use App\Http\Controllers\Api\Admin\ProductController as AdminProductController;
 use App\Http\Controllers\Api\Admin\OrderController as AdminOrderController;
 use App\Http\Controllers\Api\Admin\ImageController;
-
+use App\Http\Controllers\Api\Admin\AdminStatsController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -90,3 +90,4 @@ Route::middleware(['auth:sanctum', 'isadmin'])->group(function () {
     Route::post('/main-image', [ImageController::class, 'uploadMainImage']);
     Route::get('/images/{productId}', [ImageController::class, 'getProductImages']);
 });
+    Route::get('/admin/stats', [AdminStatsController::class, 'index']);
