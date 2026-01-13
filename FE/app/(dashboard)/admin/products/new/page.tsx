@@ -212,18 +212,6 @@ export default function AddNewProduct() {
 
         <div>
           <label className="form-control w-full max-w-xs">
-            <div className="label"><span className="label-text">Sản phẩm Slug:</span></div>
-            <input
-              type="text"
-              className="input input-bordered w-full max-w-xs"
-              value={slugify(product.slug)}
-              onChange={(e) => setProduct((p) => ({ ...p, slug: slugify(e.target.value) }))}
-            />
-          </label>
-        </div>
-
-        <div>
-          <label className="form-control w-full max-w-xs">
             <div className="label"><span className="label-text">Giá sản phẩm:</span></div>
             <input
               type="text"
