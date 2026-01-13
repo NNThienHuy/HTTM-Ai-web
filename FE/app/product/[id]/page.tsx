@@ -4,6 +4,7 @@ import { SingleProductDynamicFields } from "@/components";
 import { sanitize, sanitizeHtml } from "@/lib/sanitize";
 import config from "@/lib/config";
 import { Product } from "@/lib/types";
+import SimilarProductsSlider from "@/components/SimilarProductsSlider";
 
 const buildImgSrc = (src?: string) => {
   if (!src || src === "") return "/product_placeholder.jpg";
@@ -79,6 +80,8 @@ export default async function SingleProductPage({
     inStock: Number(rawProduct.stock_quantity ?? rawProduct.inStock ?? rawProduct.stock ?? 0),
     description: rawProduct.description ?? "",
     slug: rawProduct.slug ?? String(productId), // slug để tạm cũng được
+
+    category_id: rawProduct?.category?.id ?? rawProduct?.category_id ?? 0,
   };
 
   return (
@@ -146,6 +149,12 @@ export default async function SingleProductPage({
             )}
           </div>
         </div>
+        <SimilarProductsSlider
+          currentProductId={String(uiProduct.id)}
+          categoryId={uiProduct.category_id}
+          title="Các sản phẩm tương tự dành cho bạn"
+          limit={8}
+        />
       </div>
     </div>
   );
