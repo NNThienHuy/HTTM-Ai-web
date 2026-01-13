@@ -59,7 +59,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', 'isadmin'])->group(function () {
     
     // 1. Users (Frontend gọi /api/users để quản lý user)
-    Route::apiResource('users', UserController::class);
+    Route::apiResource('admin/users', UserController::class);
 
     // 2. Merchants
     // Route::apiResource('merchants', MerchantController::class);
