@@ -19,41 +19,49 @@ const AddToWishlistBtn = ({ product, slug }: AddToWishlistBtnProps) => {
   const [isProductInWishlist, setIsProductInWishlist] = useState<boolean>();
 
   const addToWishlistFun = async () => {
-    // getting user by email so I can get his user id
-    if (session?.user?.email) {
-      try {
-        // sending fetch request to get user id because we will need it for saving wish item
-        const userResponse = await apiClient.get(`/api/users/email/${session?.user?.email}`, {
-          cache: "no-store",
-        });
-        const userData = await userResponse.json();
-        
-        // Add product to wishlist
-        const wishlistResponse = await apiClient.post("/api/wishlist", {
-          productId: product?.id,
-          userId: userData?.id
-        });
-        
-        if (wishlistResponse.ok) {
-          addToWishlist({
-            id: product?.id,
-            title: product?.title,
-            price: product?.price,
-            image: product?.mainImage || "/product_placeholder.jpg",
-            slug: String(product?.id),
-            stockAvailabillity: product?.inStock,
-          });
-          toast.success("Product added to the wishlist");
-        } else {
-          const errorData = await wishlistResponse.json();
-          toast.error(errorData.message || "Failed to add product to wishlist");
-        }
-      } catch (error) {
-        console.error("Error adding to wishlist:", error);
-        toast.error("Failed to add product to wishlist");
-      }
-    } else {
+    if (!session?.user?.email) {
       toast.error("You need to be logged in to add a product to the wishlist");
+      return;
+    }
+
+    const productId = (product as any)?.id ?? (product as any)?.product_id;
+    if (!productId) return toast.error("Missing product id");
+
+    const wishImage =
+      (product as any)?.mainImage ??
+      (product as any)?.main_image ??
+      (product as any)?.image_url ??
+      (product as any)?.image ??
+      "/product_placeholder.jpg";
+
+    try {
+      const userResponse = await apiClient.get(`/api/users/email/${session.user.email}`, {
+        cache: "no-store",
+      });
+      const userData = await userResponse.json();
+
+      const wishlistResponse = await apiClient.post("/api/wishlist", {
+        productId,
+        userId: userData?.id,
+      });
+
+      if (wishlistResponse.ok) {
+        addToWishlist({
+          id: productId,
+          title: product?.title,
+          price: product?.price,
+          image: wishImage,
+          slug: String(productId), 
+          stockAvailabillity: product?.inStock,
+        });
+        toast.success("Product added to the wishlist");
+      } else {
+        const errorData = await wishlistResponse.json();
+        toast.error(errorData.message || "Failed to add product to wishlist");
+      }
+    } catch (error) {
+      console.error("Error adding to wishlist:", error);
+      toast.error("Failed to add product to wishlist");
     }
   };
 
