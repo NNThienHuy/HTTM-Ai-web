@@ -68,9 +68,9 @@ Route::middleware(['auth:sanctum', 'isadmin'])->group(function () {
     Route::apiResource('categories', CategoryController::class);
 
     // 4. Products (Quản lý sản phẩm bởi Admin)
-    Route::post('/products', [AdminProductController::class, 'store']);
-    Route::put('/products/{id}', [AdminProductController::class, 'update']);
-    Route::delete('/products/{id}', [AdminProductController::class, 'destroy']);
+    Route::post('/admin/products', [AdminProductController::class, 'store']);
+    Route::put('/admin/products/{id}', [AdminProductController::class, 'update']);
+    Route::delete('/admin/products/{id}', [AdminProductController::class, 'destroy']);
     
     // 5. Orders (Quản lý đơn hàng bởi Admin)
     Route::get('/admin/orders', [AdminOrderController::class, 'index']); 
