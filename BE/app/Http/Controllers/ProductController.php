@@ -62,7 +62,7 @@ class ProductController extends Controller
                 'customer_id' => $request->user()->customer->customer_id,
                 'product_id' => $productId,
                 'interaction_type' => 'view',
-                'interaction_value' => 1.0
+                'interaction_value' => 5.0
             ]);
         }
 

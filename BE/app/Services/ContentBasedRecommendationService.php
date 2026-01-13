@@ -23,7 +23,6 @@ class ContentBasedRecommendationService
     ];
 
     /**
-     * Lấy sản phẩm tương tự (Phiên bản tối ưu)
      * Trả về mảng gồm: Product, Distance, SimilarityScore
      */
     public function getSimilarProducts($targetProduct, $limit = 20): Collection
@@ -37,9 +36,9 @@ class ContentBasedRecommendationService
 
         // 2. Lấy ứng viên + Tính distance (Eager Loading để tối ưu query)
         $recommendations = Product::with(['category', 'laptopFeature'])
-            ->where('product_id', '!=', $targetProduct->product_id) // Trừ chính nó
-            ->where('category_id', $targetProduct->category_id)     // Cùng danh mục
-            ->whereHas('laptopFeature')                             // Phải có thông số
+            ->where('product_id', '!=', $targetProduct->product_id) 
+            ->where('category_id', $targetProduct->category_id)     
+            ->whereHas('laptopFeature')                             
             ->get()
             ->map(function ($candidate) use ($targetVector) {
                 $candidateVector = $this->preprocess($candidate);
@@ -57,10 +56,10 @@ class ContentBasedRecommendationService
                     'similarity_score' => $this->convertToSimilarityScore($distance)
                 ];
             })
-            ->filter()           // Loại bỏ null
-            ->sortBy('distance') // Sắp xếp: Khoảng cách càng nhỏ càng tốt
-            ->take($limit)       // Lấy top K
-            ->values();          // Reset key mảng
+            ->filter()           
+            ->sortBy('distance') 
+            ->take($limit)       
+            ->values();          
 
         return $recommendations;
     }
