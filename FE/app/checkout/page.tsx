@@ -309,11 +309,11 @@ const CheckoutPage = () => {
                 </div>
                 <div className="flex justify-between">
                     <dt className="text-gray-600">Phí vận chuyển</dt>
-                    <dd className="font-medium">${SHIPPING_FEE}</dd>
+                    <dd className="font-medium">VND{SHIPPING_FEE}</dd>
                 </div>
                 <div className="flex justify-between font-bold text-lg border-t border-gray-200 pt-2 text-gray-900">
                     <dt>Tổng cộng</dt>
-                    <dd className="text-blue-600">${FINAL_TOTAL.toLocaleString()}</dd>
+                    <dd className="text-blue-600">VND{FINAL_TOTAL.toLocaleString()}</dd>
                 </div>
             </div>
             

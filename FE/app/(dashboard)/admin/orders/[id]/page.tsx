@@ -383,11 +383,11 @@ const AdminSingleOrder = () => {
             </div>
           ))}
           <div className="flex flex-col gap-y-2 mt-10">
-            <p className="text-2xl">Tổng: ${order?.total}</p>
-            <p className="text-2xl">Thuế 20%: ${order?.total / 5}</p>
-            <p className="text-2xl">Phí Ship: $5</p>
+            <p className="text-2xl">Tổng: VND{order?.total}</p>
+            <p className="text-2xl">Thuế 20%: VND{order?.total / 5}</p>
+            <p className="text-2xl">Phí Ship: 5.000 VND</p>
             <p className="text-3xl font-semibold">
-              Total: ${order?.total + order?.total / 5 + 5}
+              Total: VND{order?.total + order?.total / 5 + 5}
             </p>
           </div>
           <div className="flex gap-x-2 max-sm:flex-col mt-5">
